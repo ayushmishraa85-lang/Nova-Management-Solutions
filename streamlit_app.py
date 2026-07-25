@@ -1,7 +1,8 @@
 """
-Ayush Intelligence Hub Dashboard — Streamlit Edition
-Phase 4: Anthropic LLM streaming · natural-language BlinkBot · chart detection
-Phase 5: CSV + Excel (.xlsx) upload support with validation
+NovaMS — Nova Management Solutions
+Quick-Commerce Business Intelligence Platform
+Phase 6: Modular sidebar navigation (Executive Overview, Sales, Delivery,
+Inventory, Operations, Customer, Finance, AI Analyst, Data Explorer)
 Developed by Ayush Mishra
 """
 
@@ -22,7 +23,7 @@ warnings.filterwarnings("ignore")
 # ══════════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="Ayush Intelligence Hub",
+    page_title="NovaMS — Nova Management Solutions",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -40,60 +41,154 @@ footer   { visibility: hidden; }
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.main { background: #070d1a; }
-.block-container { padding: 1.5rem 2rem; max-width: 1400px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --nova-ink:      #0F172A;
+  --nova-ink-soft: #475569;
+  --nova-muted:    #94A3B8;
+  --nova-border:   #E2E8F0;
+  --nova-bg:       #F8FAFC;
+  --nova-card:     #FFFFFF;
+  --nova-blue:     #1D4DFF;
+  --nova-blue-tint:#EEF2FF;
+  --nova-green:    #16A34A;
+  --nova-green-tint:#F0FDF4;
+  --nova-red:      #DC2626;
+  --nova-red-tint: #FEF2F2;
+  --nova-amber:    #B45309;
+  --nova-amber-tint:#FFFBEB;
+  --nova-sidebar:  #0B1220;
+  --nova-sidebar-2:#131C31;
+}
+
+html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
+.main, [data-testid="stAppViewContainer"] { background: var(--nova-bg); }
+.block-container { padding: 1.75rem 2.25rem 3rem; max-width: 1360px; }
+h1, h2, h3, h4 { color: var(--nova-ink); letter-spacing: -.01em; }
+p, span, div { -webkit-font-smoothing: antialiased; }
+
+/* ── KPI cards — flat, left-aligned, single ink color, no gradients ── */
 .kpi-card {
-  background: linear-gradient(135deg, #0d1628, #121d35);
-  border: 1px solid rgba(99,130,255,.15);
-  border-radius: 14px; padding: 18px 16px;
-  text-align: center; position: relative;
-  overflow: hidden; transition: transform .2s;
+  background: var(--nova-card);
+  border: 1px solid var(--nova-border);
+  border-radius: 10px; padding: 16px 18px;
+  text-align: left; position: relative;
 }
-.kpi-card:hover { transform: translateY(-2px); }
-.kpi-label { font-size: 10px; color: #4a5a7a; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
-.kpi-value { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
-.kpi-sub   { font-size: 10px; color: #4a5a7a; }
-.kpi-badge { display: inline-block; font-size: 9px; font-weight: 600; border-radius: 5px; padding: 2px 7px; margin-top: 4px; }
-.up   { background: rgba(16,185,129,.12);  color: #34d399; }
-.down { background: rgba(239,68,68,.12);   color: #f87171; }
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--nova-ink-soft); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 700; color: var(--nova-ink); margin-bottom: 6px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi-sub   { font-size: 11px; color: var(--nova-muted); }
+.kpi-badge { display: inline-block; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 7px; margin-bottom: 6px; }
+.up   { background: var(--nova-green-tint); color: var(--nova-green); }
+.down { background: var(--nova-red-tint);   color: var(--nova-red); }
+
+/* ── Section labels ── */
 .section-head {
-  font-size: 11px; font-weight: 600; color: #8899bb;
-  text-transform: uppercase; letter-spacing: .1em;
-  border-left: 3px solid #6366f1; padding-left: 10px;
-  margin: 24px 0 14px;
+  font-size: 11px; font-weight: 700; color: var(--nova-ink-soft);
+  text-transform: uppercase; letter-spacing: .08em;
+  border-left: 3px solid var(--nova-blue); padding-left: 10px;
+  margin: 28px 0 14px;
 }
+
+/* ── Page header — flat, no colored box, eyebrow + title + divider ── */
+.page-header {
+  border-bottom: 1px solid var(--nova-border);
+  padding: 4px 0 18px; margin-bottom: 22px;
+}
+.page-kicker {
+  font-size: 11px; font-weight: 700; color: var(--nova-blue);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px;
+}
+.page-title { margin: 0; font-size: 26px; font-weight: 700; color: var(--nova-ink); }
+.page-sub { margin: 6px 0 0; font-size: 13px; color: var(--nova-ink-soft); }
+
+/* ── Callouts ── */
+.narrative-box {
+  background: var(--nova-blue-tint); border-left: 3px solid var(--nova-blue);
+  border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 18px;
+  font-size: 12.5px; color: var(--nova-ink-soft); line-height: 1.65;
+}
+.narrative-box b { color: var(--nova-ink); font-weight: 600; }
+.missing-box {
+  background: var(--nova-amber-tint); border-left: 3px solid var(--nova-amber);
+  border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0;
+  font-size: 12.5px; color: #7C5A0B; line-height: 1.65;
+}
+
+/* ── Insight cards ── */
 .insight-card {
-  background: linear-gradient(135deg, #121d35, #0d1628);
-  border: 1px solid rgba(99,130,255,.12);
-  border-radius: 12px; padding: 16px; height: 100%; margin-bottom: 4px;
+  background: var(--nova-card); border: 1px solid var(--nova-border);
+  border-radius: 10px; padding: 16px; height: 100%; margin-bottom: 4px;
 }
-.insight-title { font-size: 10px; font-weight: 600; color: #4a5a7a; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-.insight-body  { font-size: 12px; color: #8899bb; line-height: 1.6; }
-.insight-body strong { color: #67e8f9; }
-.stat-row  { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid rgba(99,130,255,.06); }
-.stat-label{ font-size: 11px; color: #8899bb; }
-.stat-value{ font-size: 11px; font-weight: 600; color: #67e8f9; font-family: monospace; }
-.footer { text-align: center; padding: 20px; color: #4a5a7a; font-size: 11px; border-top: 1px solid rgba(99,130,255,.08); margin-top: 30px; }
-.footer .dev { background: linear-gradient(90deg,#a5b4fc,#67e8f9); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+.insight-title { font-size: 10.5px; font-weight: 700; color: var(--nova-blue); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+.insight-body  { font-size: 12.5px; color: var(--nova-ink-soft); line-height: 1.6; }
+.insight-body strong { color: var(--nova-ink); }
+
+/* ── Stat rows (used inside white panel cards) ── */
+.stat-row  { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--nova-border); }
+.stat-label{ font-size: 11.5px; color: var(--nova-ink-soft); }
+.stat-value{ font-size: 11.5px; font-weight: 700; color: var(--nova-ink); font-family: 'SF Mono', monospace; }
+
+/* ── Footer ── */
+.footer { text-align: center; padding: 24px 0; color: var(--nova-muted); font-size: 11.5px; border-top: 1px solid var(--nova-border); margin-top: 34px; }
+.footer .dev { color: var(--nova-blue); font-weight: 700; }
+
+/* ── BlinkBot chat ── */
 .chat-message-bot {
-  background: linear-gradient(135deg, rgba(99,102,241,.1), rgba(6,182,212,.05));
-  border: 1px solid rgba(99,102,241,.2); border-radius: 12px 12px 12px 0;
-  padding: 14px 16px; margin: 8px 0; font-size: 13px; color: #e2e8f0; line-height: 1.6;
+  background: var(--nova-card); border: 1px solid var(--nova-border);
+  border-left: 3px solid var(--nova-blue); border-radius: 4px 10px 10px 4px;
+  padding: 14px 16px; margin: 8px 0; font-size: 13px; color: var(--nova-ink); line-height: 1.65;
 }
 .chat-message-user {
-  background: rgba(30,41,59,.8); border: 1px solid rgba(99,130,255,.15);
-  border-radius: 12px 12px 0 12px; padding: 12px 16px; margin: 8px 0;
-  font-size: 13px; color: #cbd5e1; text-align: right;
+  background: var(--nova-ink); border-radius: 10px 10px 4px 10px;
+  padding: 12px 16px; margin: 8px 0 8px auto; max-width: 78%;
+  font-size: 13px; color: #F1F5F9; text-align: left;
 }
 div[data-testid="metric-container"] {
-  background: #0d1628; border: 1px solid rgba(99,130,255,.12); border-radius: 12px; padding: 12px;
+  background: var(--nova-card); border: 1px solid var(--nova-border); border-radius: 10px; padding: 12px;
 }
 .blinkbot-header {
-  background: linear-gradient(135deg, #1e1b6e, #312e81);
-  padding: 16px 20px; display: flex; align-items: center; gap: 12px;
-  border: 1px solid rgba(99,102,241,.25); border-radius: 16px; margin-bottom: 16px;
+  background: var(--nova-card); border: 1px solid var(--nova-border);
+  border-left: 3px solid var(--nova-blue);
+  padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+  border-radius: 4px 10px 10px 4px; margin-bottom: 16px;
+}
+
+/* ── Sidebar — dark, disciplined, single accent ── */
+section[data-testid="stSidebar"] {
+  background: var(--nova-sidebar);
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+section[data-testid="stSidebar"] * { color: #CBD5E1; }
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 { color: #F8FAFC; }
+section[data-testid="stSidebar"] .stMarkdown p { color: #94A3B8; }
+section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.08); }
+section[data-testid="stSidebar"] input[type="radio"] { accent-color: var(--nova-blue); }
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
+  font-size: 10.5px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .08em;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label {
+  padding: 7px 10px; border-radius: 6px; margin-bottom: 1px;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:hover { background: var(--nova-sidebar-2); }
+section[data-testid="stSidebar"] .stTextInput input,
+section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
+  background: var(--nova-sidebar-2); border-color: rgba(255,255,255,.1); color: #F1F5F9;
+}
+
+.nav-brand { text-align:center; padding:10px 0 20px; }
+.nav-brand .logo {
+  width:38px;height:38px;background:var(--nova-blue);
+  border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;
+}
+.nav-brand .name { font-size:15px;font-weight:700;color:#F8FAFC;letter-spacing:-.01em; }
+.nav-brand .tag { font-size:10px;color:#64748B;margin-top:2px; letter-spacing:.06em; text-transform:uppercase; }
+
+/* ── Global Streamlit primary accent (buttons, tabs, focus rings) ── */
+.stButton>button, [data-testid="stFormSubmitButton"] button, [data-testid="stBaseButton-primary"] {
+  border-radius: 7px; font-weight: 600;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -109,45 +204,54 @@ CITY_CLR = {"Delhi":"#6366f1","Mumbai":"#06b6d4","Bangalore":"#10b981","Hyderaba
 PLOTLY_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter", color="#8899bb", size=11),
+    font=dict(family="Inter", color="#475569", size=11),
     margin=dict(l=10, r=10, t=30, b=10),
-    xaxis=dict(gridcolor="rgba(99,130,255,.06)", linecolor="rgba(99,130,255,.1)"),
-    yaxis=dict(gridcolor="rgba(99,130,255,.06)", linecolor="rgba(99,130,255,.1)"),
+    xaxis=dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)"),
+    yaxis=dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)"),
     legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
 )
 
-# PLOTLY_BASE — safe spread for update_layout calls that define their own axes/legend.
-# Excludes xaxis, yaxis, AND legend so callers can override them freely.
-_AXIS_DEFAULTS = dict(gridcolor="rgba(99,130,255,.06)", linecolor="rgba(99,130,255,.1)")
+_AXIS_DEFAULTS = dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)")
 
 
 def _hex_to_rgba(hex_color: str, alpha: float = 0.08) -> str:
-    """
-    Convert a #RRGGBB hex string to a valid plotly rgba() string.
-    Falls back to the original string if it isn't a 7-char hex color.
-    """
     if not (isinstance(hex_color, str) and hex_color.startswith("#") and len(hex_color) == 7):
         return hex_color
     r = int(hex_color[1:3], 16)
     g = int(hex_color[3:5], 16)
     b = int(hex_color[5:7], 16)
     return f"rgba({r},{g},{b},{alpha})"
+
+
 _LEGEND_DEFAULT = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10))
 PLOTLY_BASE = {k: v for k, v in PLOTLY_LAYOUT.items()
                if k not in ("xaxis", "yaxis", "legend")}
 
-# Unit-economics cost ratios (easy to tune in one place)
 UNIT_ECON = dict(cogs=0.52, rider=0.12, packaging=0.03, gateway=0.02, promos=0.05)
-
-# Delivery simulation parameters
 DELIVERY_PARAMS = dict(mean=11.5, std=3.5, lo=5, hi=35, promise=10)
+
+# City name standardization — merges aliases that represent the same city
+# so "Bangalore" and "Bengaluru" (etc.) never get double-counted.
+CITY_ALIASES = {
+    "bengaluru": "Bangalore",
+    "bangalore": "Bangalore",
+    "bombay":    "Mumbai",
+    "mumbai":    "Mumbai",
+    "delhi":     "Delhi",
+    "new delhi": "Delhi",
+    "calcutta":  "Kolkata",
+    "kolkata":   "Kolkata",
+    "madras":    "Chennai",
+    "chennai":   "Chennai",
+    "hyderabad": "Hyderabad",
+    "pune":      "Pune",
+}
 
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── UTILITY / FORMATTING
 # ══════════════════════════════════════════════════════════════════════════════════
 
 def fmt(n: float) -> str:
-    """Format a number as Indian currency shorthand."""
     if pd.isna(n):  return "—"
     if n >= 1e7:    return f"₹{n/1e7:.1f}Cr"
     if n >= 1e5:    return f"₹{n/1e5:.2f}L"
@@ -156,7 +260,6 @@ def fmt(n: float) -> str:
 
 
 def pct_change_label(current: float, previous: float) -> tuple[str, bool]:
-    """Return (label, is_positive) for WoW / period comparison badges."""
     if previous == 0:
         return "+0.0%", True
     chg = (current - previous) / abs(previous) * 100
@@ -204,34 +307,64 @@ _NUMERIC_COLS = ["Original Price", "Current Price", "Discount", "Orders", "Total
 _PRICE_BINS   = [0, 60, 100, 140, 180, np.inf]
 _PRICE_LABELS = ["₹20–60", "₹61–100", "₹101–140", "₹141–180", "₹181+"]
 
-# Columns every dataset MUST contain for the dashboard's math to work.
-# "Influencer Active" is intentionally excluded — it's treated as optional
-# throughout the app (every consumer already checks `if "Influencer Active" in df.columns`).
 REQUIRED_COLUMNS = [
     "Product Name", "Category", "City",
     "Original Price", "Current Price", "Discount",
     "Orders", "Total Revenue",
 ]
 
+# Optional columns the Delivery Analytics / Operations pages will use
+# *if* they exist in the uploaded file. Nothing here is invented.
+OPTIONAL_DELIVERY_COLS = [
+    "Order ID", "Delivery Partner", "Delivery Time", "Pickup Time",
+    "Packing Time", "Rider Waiting Time", "Distance", "Delivery Cost",
+    "Delay Reason", "SLA Target", "SLA Achieved", "Customer Rating",
+]
+OPTIONAL_OPERATIONS_COLS = [
+    "Order Processing Time", "Picking Time", "Packing Time", "Store",
+]
+
+
+def standardize_cities(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Merge known city-name aliases (e.g. Bangalore/Bengaluru) into one
+    canonical name so they don't get double-counted as separate cities.
+    Returns (df, mapping_applied) where mapping_applied only contains
+    aliases that were actually present and changed.
+    """
+    if "City" not in df.columns:
+        return df, {}
+    applied = {}
+    def _map(city):
+        key = str(city).strip().lower()
+        canonical = CITY_ALIASES.get(key)
+        if canonical and canonical != city:
+            applied[city] = canonical
+            return canonical
+        return city
+    df = df.copy()
+    df["City"] = df["City"].apply(_map)
+    return df, applied
+
 
 def clean(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize, impute, and engineer features on a raw DataFrame."""
+    """Normalize, impute, standardize cities, and engineer features on a raw DataFrame."""
     df = df.copy()
     df.columns = [c.strip() for c in df.columns]
     df.dropna(how="all", inplace=True)
 
-    # Coerce numerics
     for col in _NUMERIC_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # Impute
     num_cols = df.select_dtypes(include="number").columns
     df[num_cols] = df[num_cols].fillna(df[num_cols].median())
     for col in df.select_dtypes(include="object").columns:
         df[col] = df[col].fillna(df[col].mode()[0]).str.strip()
 
-    # Derived columns
+    df, city_map = standardize_cities(df)
+    st.session_state["_city_standardization"] = city_map
+
     df["Profit"]        = (df["Current Price"] - df["Original Price"]) * df["Orders"]
     df["Profit Margin"] = np.where(
         df["Total Revenue"] > 0,
@@ -246,7 +379,6 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data
 def load_default() -> pd.DataFrame:
-    """Load the dataset from disk or fall back to the embedded sample CSV."""
     path = os.path.join(os.path.dirname(__file__), "..", "data", "zepto_sales_dataset.csv")
     if os.path.exists(path):
         return clean(pd.read_csv(path))
@@ -254,13 +386,6 @@ def load_default() -> pd.DataFrame:
 
 
 def _read_uploaded_dataframe(uploaded_file) -> pd.DataFrame:
-    """
-    Detect the uploaded file's type by extension and parse it into a
-    raw (un-cleaned) DataFrame.
-
-    Supports .csv and .xlsx. Raises ValueError with a user-friendly
-    message for anything else, or if parsing fails outright.
-    """
     filename = uploaded_file.name.lower()
 
     if filename.endswith(".csv"):
@@ -274,8 +399,6 @@ def _read_uploaded_dataframe(uploaded_file) -> pd.DataFrame:
 
     elif filename.endswith(".xlsx"):
         try:
-            # First sheet by default — most exports from Zepto/Blinkit/
-            # Swiggy Instamart-style tools ship a single-sheet workbook.
             return pd.read_excel(uploaded_file, engine="openpyxl")
         except ImportError:
             raise ValueError(
@@ -287,7 +410,6 @@ def _read_uploaded_dataframe(uploaded_file) -> pd.DataFrame:
                 f"Couldn't parse **{uploaded_file.name}** as an Excel file. "
                 f"Make sure it's a valid, non-password-protected .xlsx workbook. ({e})"
             )
-
     else:
         raise ValueError(
             "Unsupported file type. Please upload a **.csv** or **.xlsx** file."
@@ -295,7 +417,6 @@ def _read_uploaded_dataframe(uploaded_file) -> pd.DataFrame:
 
 
 def _validate_columns(df: pd.DataFrame, filename: str) -> None:
-    """Raise ValueError if any required column is missing from df."""
     df.columns = [str(c).strip() for c in df.columns]
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
@@ -310,22 +431,25 @@ def _validate_columns(df: pd.DataFrame, filename: str) -> None:
 
 
 def load_user_file(uploaded_file) -> pd.DataFrame:
-    """
-    End-to-end loader for a user-uploaded CSV or XLSX file:
-      1. Detect type & parse (_read_uploaded_dataframe)
-      2. Validate required columns (_validate_columns)
-      3. Clean, impute, and engineer features (clean)
-
-    Works with exports from Zepto, Blinkit, Swiggy Instamart, or any
-    quick-commerce platform as long as the required columns are present —
-    column order and extra columns don't matter.
-
-    Raises ValueError on any recoverable problem; the caller is expected
-    to catch it and fall back to the default dataset.
-    """
     raw_df = _read_uploaded_dataframe(uploaded_file)
     _validate_columns(raw_df, uploaded_file.name)
     return clean(raw_df)
+
+
+def data_quality_report(df: pd.DataFrame) -> dict:
+    """Compute data-trust indicators shown on the Data Explorer page."""
+    missing_by_col = df.isna().sum()
+    missing_by_col = missing_by_col[missing_by_col > 0].sort_values(ascending=False)
+    dup_rows = int(df.duplicated().sum())
+    return dict(
+        total_rows    = len(df),
+        total_cols    = len(df.columns),
+        missing_total = int(df.isna().sum().sum()),
+        missing_by_col= missing_by_col,
+        dup_rows      = dup_rows,
+        dtypes        = df.dtypes.astype(str),
+        city_map      = st.session_state.get("_city_standardization", {}),
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -333,10 +457,6 @@ def load_user_file(uploaded_file) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════════
 
 def compute_kpis(df: pd.DataFrame) -> dict:
-    """
-    Compute all top-level KPIs from the filtered DataFrame.
-    Returns a flat dict so rendering code never does arithmetic.
-    """
     total_rev    = df["Total Revenue"].sum()
     total_profit = df["Profit"].sum()
     total_orders = df["Orders"].sum()
@@ -347,106 +467,59 @@ def compute_kpis(df: pd.DataFrame) -> dict:
     city_rev = df.groupby("City")["Total Revenue"].sum().sort_values(ascending=False)
 
     return dict(
-        total_rev    = total_rev,
-        total_profit = total_profit,
-        total_orders = total_orders,
-        margin       = margin,
-        rev_std      = rev_std,
-        cat_rev      = cat_rev,
-        city_rev     = city_rev,
-        aov          = total_rev / total_orders if total_orders else 0,
+        total_rev=total_rev, total_profit=total_profit, total_orders=total_orders,
+        margin=margin, rev_std=rev_std, cat_rev=cat_rev, city_rev=city_rev,
+        aov=total_rev / total_orders if total_orders else 0,
     )
 
 
 def compute_influencer_stats(df: pd.DataFrame) -> dict:
-    """
-    Compute influencer lift on revenue and orders.
-    Returns a dict with lift %, p-value, per-group means and counts.
-    """
     has_inf = "Influencer Active" in df.columns
     if not has_inf:
         return dict(available=False)
-
     grp_y = df[df["Influencer Active"] == "Yes"]
     grp_n = df[df["Influencer Active"] == "No"]
-
     rev_y = grp_y["Total Revenue"].mean() if len(grp_y) else 0
     rev_n = grp_n["Total Revenue"].mean() if len(grp_n) else 0
     rev_lift = ((rev_y - rev_n) / rev_n * 100) if rev_n > 0 else 0
-
     ord_y = grp_y["Orders"].mean() if len(grp_y) else 0
     ord_n = grp_n["Orders"].mean() if len(grp_n) else 0
     ord_lift = ((ord_y - ord_n) / ord_n * 100) if ord_n > 0 else 0
-
     _, p_inf = (
         stats.ttest_ind(grp_y["Total Revenue"], grp_n["Total Revenue"])
-        if len(grp_y) > 1 and len(grp_n) > 1
-        else (0, 1)
+        if len(grp_y) > 1 and len(grp_n) > 1 else (0, 1)
     )
-
     return dict(
-        available   = True,
-        rev_y       = rev_y,
-        rev_n       = rev_n,
-        rev_lift    = rev_lift,
-        ord_lift    = ord_lift,
-        p_value     = p_inf,
-        significant = p_inf < 0.05,
-        count_y     = len(grp_y),
-        count_n     = len(grp_n),
+        available=True, rev_y=rev_y, rev_n=rev_n, rev_lift=rev_lift, ord_lift=ord_lift,
+        p_value=p_inf, significant=p_inf < 0.05, count_y=len(grp_y), count_n=len(grp_n),
     )
 
 
 def compute_statistics(df: pd.DataFrame) -> dict:
-    """
-    Run descriptive stats, normality test, outlier detection, and correlations.
-    Returns a structured dict for the stats section renderer.
-    """
     rev_arr  = df["Total Revenue"].values
     z_scores = np.abs(stats.zscore(rev_arr))
-
     outlier_mask = z_scores > 2
     outliers     = df[outlier_mask].copy()
     outliers["Z-Score"] = z_scores[outlier_mask].round(2)
-
     _, p_norm    = stats.shapiro(rev_arr[:5000])
     r_disc, p_disc = stats.pearsonr(df["Discount"], df["Orders"])
     r_rev,  p_rev  = stats.pearsonr(df["Total Revenue"], df["Profit"])
-
     return dict(
-        rev_arr  = rev_arr,
-        mean     = np.mean(rev_arr),
-        median   = np.median(rev_arr),
-        std      = np.std(rev_arr),
-        skewness = stats.skew(rev_arr),
-        kurtosis = stats.kurtosis(rev_arr),
-        p_norm   = p_norm,
-        is_normal= p_norm > 0.05,
-        outliers = outliers,
-        r_disc   = r_disc,
-        p_disc   = p_disc,
-        r_rev    = r_rev,
-        p_rev    = p_rev,
-        corr_matrix = df[
-            ["Original Price","Current Price","Discount","Orders","Total Revenue","Profit","Profit Margin"]
-        ].corr().round(3),
+        rev_arr=rev_arr, mean=np.mean(rev_arr), median=np.median(rev_arr), std=np.std(rev_arr),
+        skewness=stats.skew(rev_arr), kurtosis=stats.kurtosis(rev_arr), p_norm=p_norm,
+        is_normal=p_norm > 0.05, outliers=outliers, r_disc=r_disc, p_disc=p_disc,
+        r_rev=r_rev, p_rev=p_rev,
+        corr_matrix=df[["Original Price","Current Price","Discount","Orders","Total Revenue","Profit","Profit Margin"]].corr().round(3),
     )
 
 
 def compute_forecast(df: pd.DataFrame) -> dict | None:
-    """
-    Fit a linear regression on product-level revenue ranking.
-    Returns a dict with the model, predictions, and metadata.
-    Returns None if there are fewer than 5 data points.
-    """
     prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values().values
     n = len(prod_rev)
     if n < 5:
         return None
-
     X = np.arange(1, n + 1).reshape(-1, 1)
     y = prod_rev.astype(float)
-
     model      = LinearRegression().fit(X, y)
     next_val   = max(0.0, float(model.predict([[n + 1]])[0]))
     r2         = model.score(X, y)
@@ -454,98 +527,55 @@ def compute_forecast(df: pd.DataFrame) -> dict | None:
     ci         = 1.96 * float(np.std(residuals))
     mean_y     = float(np.mean(y))
     growth_pct = ((next_val - mean_y) / mean_y * 100) if mean_y else 0
-
-    # Build plot-ready arrays (down-sampled for large datasets)
     step = max(1, n // 20)
     xs   = list(range(1, n + 1, step)) + [n + 1]
     trend_vals   = [float(model.predict([[i]])[0]) for i in xs]
     actual_vals  = [float(prod_rev[i - 1]) if i <= n else None for i in xs]
-
     return dict(
-        n           = n,
-        next_val    = next_val,
-        r2          = r2,
-        ci          = ci,
-        growth_pct  = growth_pct,
-        slope       = float(model.coef_[0]),
-        xs          = xs,
-        trend_vals  = trend_vals,
-        actual_vals = actual_vals,
-        upper       = [t + ci for t in trend_vals],
-        lower       = [max(0.0, t - ci) for t in trend_vals],
+        n=n, next_val=next_val, r2=r2, ci=ci, growth_pct=growth_pct, slope=float(model.coef_[0]),
+        xs=xs, trend_vals=trend_vals, actual_vals=actual_vals,
+        upper=[t + ci for t in trend_vals], lower=[max(0.0, t - ci) for t in trend_vals],
     )
 
 
 def compute_delivery_stats(n_samples: int) -> dict:
-    """
-    Simulate delivery-time data and compute performance metrics.
-    Uses DELIVERY_PARAMS constants for reproducibility.
-    """
     np.random.seed(42)
     p = DELIVERY_PARAMS
     times = np.clip(np.random.normal(p["mean"], p["std"], max(n_samples, 50)), p["lo"], p["hi"])
-
     otd_pct = float(np.mean(times <= p["promise"] + 2) * 100)
     avg     = float(np.mean(times))
     p90     = float(np.percentile(times, 90))
     p50     = float(np.percentile(times, 50))
-
     if otd_pct >= 95:
         status, status_color = "🟢 EXCELLENT",       "#10b981"
     elif otd_pct >= 85:
         status, status_color = "🟡 NEEDS ATTENTION", "#f59e0b"
     else:
         status, status_color = "🔴 CRITICAL",        "#ef4444"
-
     hist_counts, hist_edges = np.histogram(times, bins=12)
     hist_centers = [(hist_edges[i] + hist_edges[i + 1]) / 2 for i in range(len(hist_counts))]
-
     return dict(
-        times        = times,
-        otd_pct      = otd_pct,
-        avg          = avg,
-        p90          = p90,
-        p50          = p50,
-        status       = status,
-        status_color = status_color,
-        promise      = p["promise"],
-        hist_counts  = hist_counts,
-        hist_centers = hist_centers,
+        times=times, otd_pct=otd_pct, avg=avg, p90=p90, p50=p50, status=status,
+        status_color=status_color, promise=p["promise"], hist_counts=hist_counts, hist_centers=hist_centers,
     )
 
 
 def compute_unit_economics(avg_rev: float) -> dict:
-    """
-    Break down an average order's revenue into cost buckets and net profit.
-    Ratios are driven by the UNIT_ECON constants dict.
-    """
     e = UNIT_ECON
     costs = {k: avg_rev * v for k, v in e.items()}
     net   = avg_rev - sum(costs.values())
     cm    = (net / avg_rev * 100) if avg_rev > 0 else 0
-
-    return dict(
-        avg_rev    = avg_rev,
-        net_profit = net,
-        cm_pct     = cm,
-        **costs,
-    )
+    return dict(avg_rev=avg_rev, net_profit=net, cm_pct=cm, **costs)
 
 
 def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
-    """
-    Simulate stock levels for the top-N products by order velocity.
-    Returns a tidy DataFrame with risk labels ready for rendering.
-    """
     np.random.seed(123)
     prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
     rows = []
-
     for prod, velocity in prod_velocity.head(top_n).items():
         stock_left  = int(np.random.randint(5, 200))
         daily_sales = max(1, int(velocity * 0.3))
         days_cover  = round(stock_left / daily_sales, 1)
-
         if days_cover < 1:
             risk, risk_color, action = "🔴 CRITICAL", "#ef4444", "⚡ ORDER NOW"
             bg, border = "rgba(239,68,68,.08)", "rgba(239,68,68,.3)"
@@ -555,152 +585,83 @@ def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
         else:
             risk, risk_color, action = "🟢 OK",       "#10b981", "✅ Sufficient"
             bg, border = "rgba(16,185,129,.06)",  "rgba(16,185,129,.2)"
-
         rows.append(dict(
-            Product      = prod,
-            Stock_Left   = stock_left,
-            Daily_Sales  = daily_sales,
-            Days_Cover   = days_cover,
-            Risk         = risk,
-            Action       = action,
-            _color       = risk_color,
-            _bg          = bg,
-            _border      = border,
+            Product=prod, Stock_Left=stock_left, Daily_Sales=daily_sales, Days_Cover=days_cover,
+            Risk=risk, Action=action, _color=risk_color, _bg=bg, _border=border,
         ))
-
     return pd.DataFrame(rows)
 
 
 def compute_wow_metrics(kpis: dict, factor: float = 0.88) -> dict:
-    """
-    Derive last-week comparison metrics from current KPIs using a scaling factor.
-    Returns both current and previous values for each KPI.
-    """
     prev = dict(
-        total_rev    = kpis["total_rev"]    * factor,
-        total_orders = int(kpis["total_orders"] * factor),
-        total_profit = kpis["total_profit"] * factor,
-        margin       = kpis["margin"]       * 0.95,
+        total_rev=kpis["total_rev"] * factor,
+        total_orders=int(kpis["total_orders"] * factor),
+        total_profit=kpis["total_profit"] * factor,
+        margin=kpis["margin"] * 0.95,
     )
-    badges = {
-        k: pct_change_label(kpis[k], prev[k])
-        for k in ["total_rev", "total_profit", "margin"]
-    }
+    badges = {k: pct_change_label(kpis[k], prev[k]) for k in ["total_rev", "total_profit", "margin"]}
     badges["total_orders"] = pct_change_label(kpis["total_orders"], prev["total_orders"])
     return dict(current=kpis, previous=prev, badges=badges)
 
 
 def compute_order_defects(total_orders: int) -> dict:
-    """
-    Estimate defect breakdown from total order volume using fixed industry rates.
-    """
     expired       = int(total_orders * 0.018)
     missing       = int(total_orders * 0.024)
     cancelled_oos = int(total_orders * 0.031)
     total_defects = expired + missing + cancelled_oos
     perfect       = total_orders - total_defects
     odr_pct       = total_defects / total_orders * 100 if total_orders > 0 else 0
-
     return dict(
-        total_orders  = total_orders,
-        expired       = expired,
-        missing       = missing,
-        cancelled_oos = cancelled_oos,
-        total_defects = total_defects,
-        perfect       = perfect,
-        odr_pct       = odr_pct,
-        # funnel steps
-        funnel_y = [total_orders,
-                    total_orders - expired,
-                    total_orders - expired - missing,
-                    total_orders - expired - missing - cancelled_oos,
-                    perfect],
-        funnel_labels = ["Total Orders","After Expired/Damaged",
-                         "After Missing Items","After OOS Cancels","✅ Perfect Orders"],
+        total_orders=total_orders, expired=expired, missing=missing, cancelled_oos=cancelled_oos,
+        total_defects=total_defects, perfect=perfect, odr_pct=odr_pct,
+        funnel_y=[total_orders, total_orders-expired, total_orders-expired-missing,
+                  total_orders-expired-missing-cancelled_oos, perfect],
+        funnel_labels=["Total Orders","After Expired/Damaged","After Missing Items","After OOS Cancels","✅ Perfect Orders"],
     )
 
 
 def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
-    """
-    Derive six narrative insights from the data.
-    Returns a list of (emoji, title, html_body) tuples.
-    """
     cat_rev  = kpis["cat_rev"]
     city_rev = kpis["city_rev"]
     margin   = kpis["margin"]
-
     prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
-
-    # Discount correlation
-    r_d, p_d = (stats.pearsonr(df["Discount"], df["Orders"])
-                if len(df) >= 5 else (0, 1))
-
-    # Best margin category
+    r_d, p_d = (stats.pearsonr(df["Discount"], df["Orders"]) if len(df) >= 5 else (0, 1))
     best_margin_cat = (
-        df.groupby("Category")["Profit Margin"].mean()
-          .sort_values(ascending=False).index[0]
+        df.groupby("Category")["Profit Margin"].mean().sort_values(ascending=False).index[0]
         if "Profit Margin" in df.columns and len(df) > 0 else "N/A"
     )
-
     city_gap_pct = (
         (city_rev.iloc[0] - city_rev.iloc[-1]) / city_rev.iloc[-1] * 100
         if len(city_rev) > 1 and city_rev.iloc[-1] > 0 else 0
     )
-
     return [
         ("🏆", "Best Category",
-         f"<strong>{cat_rev.index[0]}</strong> drives "
-         f"{cat_rev.iloc[0]/cat_rev.sum()*100:.1f}% of total revenue "
+         f"<strong>{cat_rev.index[0]}</strong> drives {cat_rev.iloc[0]/cat_rev.sum()*100:.1f}% of total revenue "
          f"({fmt(cat_rev.iloc[0])}). Maximize marketing budget here for peak ROI."),
-
         ("🌍", "Regional Gap",
          f"<strong>{city_rev.index[0]}</strong> ({fmt(city_rev.iloc[0])}) outperforms "
-         f"<strong>{city_rev.index[-1]}</strong> ({fmt(city_rev.iloc[-1])}) "
-         f"by {city_gap_pct:.0f}%. Target promotions in underperforming regions."),
-
+         f"<strong>{city_rev.index[-1]}</strong> ({fmt(city_rev.iloc[-1])}) by {city_gap_pct:.0f}%. "
+         f"Target promotions in underperforming regions."),
         ("⚡", "Influencer Lift",
-         f"Influencer-active products generate "
-         f"<strong>{inf['rev_lift']:+.1f}%</strong> more revenue. "
+         f"Influencer-active products generate <strong>{inf.get('rev_lift',0):+.1f}%</strong> more revenue. "
          f"{'Statistically significant ✓' if inf.get('significant') else 'Not yet significant'} "
          f"(p={inf.get('p_value', 1):.3f})."),
-
         ("📈", "Profit Margin",
-         f"Overall margin is <strong>{margin:.1f}%</strong>. "
-         f"{best_margin_cat} has the highest avg margin."),
-
+         f"Overall margin is <strong>{margin:.1f}%</strong>. {best_margin_cat} has the highest avg margin."),
         ("💡", "Discount Intelligence",
          f"Discount is {'positively' if r_d > 0 else 'negatively'} correlated with orders "
-         f"(r={r_d:.3f}, p={p_d:.3f}). "
-         f"{'Discounting drives volume.' if r_d > 0 else 'Review your discount strategy.'}"),
-
+         f"(r={r_d:.3f}, p={p_d:.3f}). {'Discounting drives volume.' if r_d > 0 else 'Review your discount strategy.'}"),
         ("🎯", "Top Product",
-         f"<strong>{prod_rev.index[0]}</strong> generates {fmt(prod_rev.iloc[0])} "
-         f"— the highest single-product revenue. "
+         f"<strong>{prod_rev.index[0]}</strong> generates {fmt(prod_rev.iloc[0])} — the highest single-product revenue. "
          f"Expand distribution and pair with influencer activation."),
     ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
-# ── PHASE 2 — MULTI-TURN MEMORY & RICH RESPONSE FORMATTING
+# ── BLINKBOT — MULTI-TURN MEMORY & RICH RESPONSE FORMATTING
 # ══════════════════════════════════════════════════════════════════════════════════
 
-# ── 1. ConversationMemory ─────────────────────────────────────────────────────────
-
 class ConversationMemory:
-    """
-    Tracks the conversational context between BlinkBot turns.
-    Stored in st.session_state so it persists across reruns.
-
-    Fields
-    ------
-    last_intent   : most recent topic (revenue / profit / city / product / ...)
-    last_city     : last city explicitly mentioned or answered about
-    last_product  : last product explicitly mentioned or answered about
-    last_category : last category explicitly mentioned or answered about
-    turn_count    : total Q&A turns so far
-    intent_stack  : rolling list of the last 3 intents (for follow-up context)
-    """
-
     def __init__(self):
         self.last_intent   : str | None = None
         self.last_city     : str | None = None
@@ -715,7 +676,7 @@ class ConversationMemory:
         if product:  self.last_product  = product
         if category: self.last_category = category
         self.turn_count += 1
-        self.intent_stack = (self.intent_stack + [intent])[-3:]   # keep last 3
+        self.intent_stack = (self.intent_stack + [intent])[-3:]
 
     def to_dict(self) -> dict:
         return {k: v for k, v in self.__dict__.items()}
@@ -729,7 +690,6 @@ class ConversationMemory:
 
 
 def _get_memory() -> ConversationMemory:
-    """Retrieve or create the ConversationMemory from session state."""
     if "bb_memory" not in st.session_state:
         st.session_state.bb_memory = ConversationMemory().to_dict()
     return ConversationMemory.from_dict(st.session_state.bb_memory)
@@ -739,48 +699,26 @@ def _save_memory(mem: ConversationMemory):
     st.session_state.bb_memory = mem.to_dict()
 
 
-# ── 2. Entity Extraction ──────────────────────────────────────────────────────────
-
 def extract_entities(question: str, df: pd.DataFrame) -> dict:
-    """
-    Scan the raw question for known city / product / category names.
-    Returns {'city': str|None, 'product': str|None, 'category': str|None}.
-    """
     q_low = question.lower()
     found = dict(city=None, product=None, category=None)
-
     for city in df["City"].unique():
         if city.lower() in q_low:
             found["city"] = city
             break
-
     for cat in df["Category"].unique():
         if cat.lower() in q_low:
             found["category"] = cat
             break
-
     for prod in df["Product Name"].unique():
         if prod.lower() in q_low:
             found["product"] = prod
             break
-
     return found
 
 
 def resolve_references(question: str, mem: ConversationMemory) -> str:
-    """
-    Replace vague pronouns / references with the entity from memory.
-
-    Examples
-    --------
-    'tell me more about it'   → last topic
-    'what about that city?'   → last_city
-    'how does that product do' → last_product
-    'compare with the other'   → last_city / last_category
-    """
     q = question.lower().strip()
-
-    # Pronoun → city
     city_refs = ["that city", "that region", "that location", "there", "that place"]
     if any(ref in q for ref in city_refs) and mem.last_city:
         q = q.replace("that city", mem.last_city) \
@@ -788,54 +726,28 @@ def resolve_references(question: str, mem: ConversationMemory) -> str:
               .replace("that location", mem.last_city) \
               .replace("there", mem.last_city) \
               .replace("that place", mem.last_city)
-
-    # Pronoun → product
     prod_refs = ["that product", "it", "that item", "the same product", "that one"]
     if any(ref in q for ref in prod_refs) and mem.last_product:
         for ref in prod_refs:
             q = q.replace(ref, mem.last_product)
-
-    # Pronoun → category
     cat_refs = ["that category", "that segment", "that section"]
     if any(ref in q for ref in cat_refs) and mem.last_category:
         for ref in cat_refs:
             q = q.replace(ref, mem.last_category)
-
-    # "tell me more" / "expand" → re-state last intent
     more_refs = ["tell me more", "more details", "expand", "elaborate", "explain more", "go deeper"]
     if any(ref in q for ref in more_refs) and mem.last_intent:
-        q = mem.last_intent   # treat as if they re-asked the last intent keyword
-
-    # "why" → add context of last topic
+        q = mem.last_intent
     if q.strip() in ("why", "why?", "how come") and mem.last_intent:
         q = f"explain {mem.last_intent}"
-
     return q
 
 
-# ── 3. ResponseBuilder — consistent rich formatting ───────────────────────────────
-
 class ResponseBuilder:
-    """
-    Fluent builder that assembles a Markdown response with a consistent structure:
-      [direct answer] → [metrics table] → [context row] → [recommendation]
-
-    Usage
-    -----
-    ResponseBuilder("📊", "Revenue Overview") \\
-        .answer("Total revenue is **₹12.3L**") \\
-        .metric("Best category", "Snacks", "🏆") \\
-        .metric("Profit margin", "18.4%", "📈") \\
-        .context("Previous week was ₹10.1L — that's a 21% jump.") \\
-        .tip("Double down on Snacks in Delhi for maximum ROI.") \\
-        .build()
-    """
-
     def __init__(self, emoji: str, title: str):
         self._emoji   = emoji
         self._title   = title
         self._answer  : str        = ""
-        self._metrics : list[tuple]= []   # (label, value, icon)
+        self._metrics : list[tuple]= []
         self._context : str        = ""
         self._tip     : str        = ""
         self._followup: str        = ""
@@ -862,31 +774,22 @@ class ResponseBuilder:
 
     def build(self) -> str:
         parts = [f"**{self._emoji} {self._title}**\n"]
-
         if self._answer:
             parts.append(self._answer + "\n")
-
         if self._metrics:
             parts.append("")
             for label, value, icon in self._metrics:
                 parts.append(f"{icon} **{label}:** {value}")
-
         if self._context:
             parts.append(f"\n💬 *{self._context}*")
-
         if self._tip:
             parts.append(f"\n💡 **Recommendation:** {self._tip}")
-
         if self._followup:
             parts.append(f"\n🔍 *You can also ask: {self._followup}*")
-
         return "\n".join(parts)
 
 
-# ── 4. Data context (unchanged from Phase 1) ─────────────────────────────────────
-
 def _bb_context(df: pd.DataFrame) -> dict:
-    """Pre-compute all values BlinkBot might need (called once per query)."""
     total_r  = df["Total Revenue"].sum()
     total_o  = df["Orders"].sum()
     total_p  = df["Profit"].sum()
@@ -902,7 +805,6 @@ def _bb_context(df: pd.DataFrame) -> dict:
     inf_n_ord= df[df["Influencer Active"]=="No"]["Orders"].mean()  if "Influencer Active" in df.columns else 0
     ord_lift = ((inf_y_ord - inf_n_ord) / inf_n_ord * 100) if inf_n_ord > 0 else 0
     disc_grp = df.groupby("Discount").agg(avg_rev=("Total Revenue","mean"), avg_orders=("Orders","mean")).reset_index() if "Discount" in df.columns else None
-
     return dict(total_r=total_r, total_o=total_o, total_p=total_p, mgn=mgn,
                 cat_r=cat_r, city_r=city_r, prod_r=prod_r, best_m=best_m,
                 inf_y_rev=inf_y_rev, inf_n_rev=inf_n_rev, inf_lift=inf_lift,
@@ -910,9 +812,7 @@ def _bb_context(df: pd.DataFrame) -> dict:
                 n_inf_y=len(df[df["Influencer Active"]=="Yes"]) if "Influencer Active" in df.columns else 0)
 
 
-# ── 5. Chart Factories (Phase 3) ─────────────────────────────────────────────────
-# Each factory returns a go.Figure styled to match the dashboard theme.
-# They are called by handlers and attached to the response as an inline chart.
+# ── Chart Factories — used by BlinkBot + Sales/Delivery/etc pages ───────────────
 
 def _chart_revenue_by_category(ctx: dict) -> go.Figure:
     cat_r = ctx["cat_r"]
@@ -921,10 +821,10 @@ def _chart_revenue_by_category(ctx: dict) -> go.Figure:
         marker_color=[CAT_CLR.get(c, "#6366f1") for c in cat_r.index],
         marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cat_r.values], textposition="outside",
-        textfont=dict(color="#f0f4ff", size=10),
+        textfont=dict(color="#0F172A", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text="💬 Revenue by Category", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Revenue by Category", font=dict(color="#1D4DFF", size=12)),
         height=240, yaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS), showlegend=False)
     return fig
 
@@ -937,10 +837,10 @@ def _chart_city_ranking(ctx: dict) -> go.Figure:
         x=cr.values, y=cr.index.tolist(), orientation="h",
         marker_color=colors, marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cr.values], textposition="outside",
-        textfont=dict(color="#f0f4ff", size=10),
+        textfont=dict(color="#0F172A", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text="💬 City Revenue Ranking", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 City Revenue Ranking", font=dict(color="#1D4DFF", size=12)),
         height=240, xaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS),
         yaxis=dict(autorange="reversed", **_AXIS_DEFAULTS), showlegend=False)
     return fig
@@ -950,17 +850,13 @@ def _chart_top_products(ctx: dict, n: int = 8) -> go.Figure:
     pr = ctx["prod_r"].head(n)
     fig = go.Figure(go.Bar(
         x=pr.values, y=pr.index.tolist(), orientation="h",
-        marker=dict(
-            color=pr.values,
-            colorscale=[[0,"#312e81"],[0.5,"#6366f1"],[1,"#06b6d4"]],
-            showscale=False,
-        ),
+        marker=dict(color=pr.values, colorscale=[[0,"#312e81"],[0.5,"#6366f1"],[1,"#06b6d4"]], showscale=False),
         marker_line_width=0,
         text=[fmt(v) for v in pr.values], textposition="outside",
-        textfont=dict(color="#f0f4ff", size=10),
+        textfont=dict(color="#0F172A", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text=f"💬 Top {n} Products by Revenue", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text=f"💬 Top {n} Products by Revenue", font=dict(color="#1D4DFF", size=12)),
         height=260, xaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS),
         yaxis=dict(autorange="reversed", **_AXIS_DEFAULTS), showlegend=False)
     return fig
@@ -970,9 +866,9 @@ def _chart_influencer_lift(ctx: dict, df: pd.DataFrame) -> go.Figure:
     grp = df.groupby(["Category","Influencer Active"])["Total Revenue"].mean().reset_index()
     grp.columns = ["Category","Influencer","Avg Revenue"]
     fig = px.bar(grp, x="Category", y="Avg Revenue", color="Influencer",
-                 barmode="group", color_discrete_map={"Yes":"#6366f1","No":"#4a5a7a"})
+                 barmode="group", color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text="💬 Influencer Lift by Category", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Influencer Lift by Category", font=dict(color="#1D4DFF", size=12)),
         height=240, yaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS))
     fig.update_traces(marker_line_width=0, opacity=0.85)
     return fig
@@ -994,7 +890,7 @@ def _chart_discount_curve(ctx: dict) -> go.Figure:
         line=dict(color="#06b6d4", width=2), marker=dict(size=7),
     ), secondary_y=True)
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text="💬 Discount Sweet Spot", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Discount Sweet Spot", font=dict(color="#1D4DFF", size=12)),
         height=240)
     fig.update_yaxes(tickprefix="₹", secondary_y=False)
     return fig
@@ -1008,10 +904,10 @@ def _chart_profit_margin_by_category(ctx: dict, df: pd.DataFrame) -> go.Figure:
         x=bm.index.tolist(), y=bm.values,
         marker_color=colors, marker_line_width=0, opacity=0.85,
         text=[f"{v:.1f}%" for v in bm.values], textposition="outside",
-        textfont=dict(color="#f0f4ff", size=10),
+        textfont=dict(color="#0F172A", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
-        title=dict(text="💬 Avg Profit Margin by Category", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Avg Profit Margin by Category", font=dict(color="#1D4DFF", size=12)),
         height=240, yaxis=dict(ticksuffix="%", **_AXIS_DEFAULTS), showlegend=False)
     return fig
 
@@ -1023,16 +919,15 @@ def _chart_orders_by_city(df: pd.DataFrame) -> go.Figure:
         marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_ord.index],
         marker_line_width=0, opacity=0.85,
         text=city_ord.values, textposition="outside",
-        textfont=dict(color="#f0f4ff", size=10),
+        textfont=dict(color="#0F172A", size=10),
     ))
     fig.update_layout(**PLOTLY_LAYOUT,
-        title=dict(text="💬 Orders by City", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Orders by City", font=dict(color="#1D4DFF", size=12)),
         height=240, showlegend=False)
     return fig
 
 
 def _chart_summary_snapshot(ctx: dict) -> go.Figure:
-    """Mini 4-panel summary chart for the executive summary response."""
     cat_r  = ctx["cat_r"]
     city_r = ctx["city_r"]
     fig = make_subplots(
@@ -1050,38 +945,33 @@ def _chart_summary_snapshot(ctx: dict) -> go.Figure:
         marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_r.index],
         marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in city_r.values], textposition="outside",
-        textfont=dict(color="#f0f4ff", size=9), showlegend=False,
+        textfont=dict(color="#0F172A", size=9), showlegend=False,
     ), row=1, col=2)
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter", color="#8899bb", size=10),
+        font=dict(family="Inter", color="#475569", size=10),
         margin=dict(l=10, r=10, t=40, b=10), height=260,
-        title=dict(text="💬 Snapshot", font=dict(color="#a5b4fc", size=12)),
+        title=dict(text="💬 Snapshot", font=dict(color="#1D4DFF", size=12)),
     )
-    fig.update_annotations(font_color="#8899bb", font_size=10)
-    fig.update_yaxes(tickprefix="₹", gridcolor="rgba(99,130,255,.06)")
+    fig.update_annotations(font_color="#475569", font_size=10)
+    fig.update_yaxes(tickprefix="₹", gridcolor="rgba(15,23,42,.06)")
     return fig
 
 
 def _fig_to_json(fig: go.Figure) -> str | None:
-    """Serialize a Plotly figure to JSON for session_state storage."""
     if fig is None: return None
-    import json
     return fig.to_json()
 
 
 def _fig_from_json(s: str | None) -> go.Figure | None:
-    """Deserialize a Plotly figure from JSON."""
     if not s: return None
-    import json
     return go.Figure(json.loads(s))
 
 
-# ── Type alias for handler return ─────────────────────────────────────────────────
-# Each handler returns (text, fig) | None
-# fig=None means no inline chart for this response
 BotReply = tuple[str, "go.Figure | None"]
 
+
+# ── BlinkBot intent handlers (rule-based fallback) ────────────────────────────────
 
 def _bb_greeting(q: str, ctx: dict, df: pd.DataFrame, mem: ConversationMemory) -> BotReply | None:
     if not any(w in q for w in ["hello","hi","hey","namaste","hii"]): return None
@@ -1390,7 +1280,6 @@ def _bb_fallback(q: str, ctx: dict, df: pd.DataFrame, mem: ConversationMemory) -
     return text, None
 
 
-# Dispatch table
 _BB_HANDLERS = [
     _bb_greeting, _bb_compare, _bb_summary, _bb_revenue, _bb_profit,
     _bb_best_product, _bb_worst_product, _bb_city, _bb_category,
@@ -1399,55 +1288,37 @@ _BB_HANDLERS = [
 
 
 def blinkbot_analyze(question: str, df: pd.DataFrame) -> BotReply:
-    """
-    Phase 3 entry point — returns (response_text, plotly_fig | None).
-    1. Load ConversationMemory
-    2. Extract named entities, resolve vague references
-    3. Route through dispatch table
-    4. Save updated memory
-    """
     if df is None or len(df) == 0:
         return "⚠️ No data loaded yet. Please upload a CSV or Excel file to get started!", None
-
     mem      = _get_memory()
     entities = extract_entities(question, df)
     q_raw    = question.lower().strip()
-
     if entities["city"]:     mem.last_city     = entities["city"]
     if entities["product"]:  mem.last_product  = entities["product"]
     if entities["category"]: mem.last_category = entities["category"]
-
     q   = resolve_references(q_raw, mem)
     ctx = _bb_context(df)
-
     for handler in _BB_HANDLERS:
         result = handler(q, ctx, df, mem)
         if result is not None:
             _save_memory(mem)
-            return result   # (text, fig)
-
+            return result
     _save_memory(mem)
     return _bb_fallback(q, ctx, df, mem)
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
-# ══════════════════════════════════════════════════════════════════════════════════
-# ── PHASE 4 — LLM INTEGRATION  (Anthropic API · streaming · chart detection)
+# ── LLM INTEGRATION  (Anthropic API · streaming · chart detection)
 # ══════════════════════════════════════════════════════════════════════════════════
 
 _CLAUDE_API_URL      = "https://api.anthropic.com/v1/messages"
-_CLAUDE_MODEL        = "claude-sonnet-5"          # balanced quality/cost for a business analyst
+_CLAUDE_MODEL        = "claude-sonnet-5"
 _ANTHROPIC_VERSION   = "2023-06-01"
 _MAX_LLM_TOKENS      = 1024
-_LLM_HISTORY_LIMIT   = 12   # keep last N messages to avoid ballooning context
+_LLM_HISTORY_LIMIT   = 12
 
 
 def _build_llm_system_prompt(df: pd.DataFrame, kpis: dict) -> str:
-    """
-    Construct a rich, data-grounded system prompt for the LLM.
-    Includes live KPIs, rankings, and strict behavioral rules.
-    Refreshed on every call so it always reflects the active filter.
-    """
     cat_r  = kpis["cat_rev"]
     city_r = kpis["city_rev"]
     prod_r = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
@@ -1465,7 +1336,7 @@ def _build_llm_system_prompt(df: pd.DataFrame, kpis: dict) -> str:
         best_disc = dg.idxmax()
         discount_sweet = f"  Optimal discount rate: {int(best_disc)}% (highest avg revenue)"
 
-    return f"""You are **BlinkBot**, the AI Business Analyst embedded in Ayush Intelligence Hub — a Zepto quick-commerce sales dashboard.
+    return f"""You are **BlinkBot**, the AI Business Analyst embedded in NovaMS — a quick-commerce operations platform.
 
 ## LIVE DATA SNAPSHOT  ({len(df):,} records, filters active)
 
@@ -1494,7 +1365,7 @@ def _build_llm_system_prompt(df: pd.DataFrame, kpis: dict) -> str:
 ## PERSONALITY & RULES
 1. You are direct and data-driven — lead with the specific number, not a hedge
 2. Always use Indian currency format: ₹12.3L (lakhs), ₹2.1Cr (crores)
-3. Every response MUST end with one concrete 💡 Recommendation
+3. Structure every answer as: (1) direct answer, (2) supporting KPI, (3) likely reason, (4) 💡 recommendation
 4. Keep answers concise (3-6 sentences) unless the user explicitly asks for detail
 5. You have full conversation context — use it for follow-up questions
 6. NEVER invent data not in the snapshot above; say "data not available" if uncertain
@@ -1504,15 +1375,6 @@ def _build_llm_system_prompt(df: pd.DataFrame, kpis: dict) -> str:
 
 
 def _sanitise_messages(messages: list[dict]) -> list[dict]:
-    """
-    Clean the LLM message list before sending to Anthropic API.
-    Rules enforced:
-      1. Remove messages with empty or whitespace-only content
-      2. Remove error blinkbot messages (start with ⚠️) — they confuse the model
-      3. Ensure strict user / assistant alternation (Anthropic requirement)
-      4. Always start with a user message
-    """
-    # Step 1 — filter bad messages
     clean = [
         m for m in messages
         if isinstance(m.get("content"), str)
@@ -1520,30 +1382,18 @@ def _sanitise_messages(messages: list[dict]) -> list[dict]:
         and not m["content"].strip().startswith("⚠️")
         and m.get("role") in ("user", "assistant")
     ]
-
-    # Step 2 — enforce alternation: collapse consecutive same-role messages
     merged: list[dict] = []
     for msg in clean:
         if merged and merged[-1]["role"] == msg["role"]:
-            # Merge into the previous message
             merged[-1]["content"] += "\n" + msg["content"]
         else:
             merged.append({"role": msg["role"], "content": msg["content"]})
-
-    # Step 3 — must start with user
     while merged and merged[0]["role"] != "user":
         merged.pop(0)
-
     return merged
 
 
 def _call_claude_stream(messages: list[dict], system: str, api_key: str):
-    """
-    Generator that streams text chunks from Anthropic's Messages API (SSE).
-    Uses claude-sonnet-5. Unlike the old Gemini integration, no role
-    remapping is needed — Anthropic's {"role": "user"/"assistant", "content": str}
-    format is exactly what BlinkBot already stores internally.
-    """
     headers = {
         "x-api-key": api_key.strip(),
         "anthropic-version": _ANTHROPIC_VERSION,
@@ -1556,11 +1406,9 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
         "messages": messages,
         "stream": True,
     }
-
     if not messages:
         yield "\n\n⚠️ **No messages to send.** Please type your question and try again."
         return
-
     try:
         with requests.post(
             _CLAUDE_API_URL, headers=headers, json=payload,
@@ -1568,7 +1416,7 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
         ) as resp:
             if resp.status_code == 400:
                 try:   err = resp.json().get("error", {}).get("message", resp.text[:300])
-                except: err = resp.text[:300]
+                except Exception: err = resp.text[:300]
                 yield f"\n\n⚠️ **Bad request (400):** {err}"
                 return
             if resp.status_code == 401:
@@ -1579,10 +1427,9 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
                 return
             if not resp.ok:
                 try:   err = resp.json().get("error", {}).get("message", resp.text[:300])
-                except: err = resp.text[:300]
+                except Exception: err = resp.text[:300]
                 yield f"\n\n⚠️ **API error {resp.status_code}:** {err}"
                 return
-
             for raw_line in resp.iter_lines():
                 if not raw_line:
                     continue
@@ -1596,7 +1443,6 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
                     chunk = json.loads(data_str)
                 except json.JSONDecodeError:
                     continue
-
                 chunk_type = chunk.get("type")
                 if chunk_type == "content_block_delta":
                     delta = chunk.get("delta", {})
@@ -1610,7 +1456,6 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
                     return
                 elif chunk_type == "message_stop":
                     break
-
     except requests.exceptions.Timeout:
         yield "\n\n⚠️ **Request timed out.** Try again in a moment."
     except requests.exceptions.ConnectionError:
@@ -1620,10 +1465,6 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
 
 
 def _detect_chart_for_question(question: str, ctx: dict, df: pd.DataFrame) -> "go.Figure | None":
-    """
-    Lightweight keyword router that picks the most relevant chart
-    for the user's question — used alongside LLM responses.
-    """
     q = question.lower()
     if any(w in q for w in ["compare","vs","versus","against","city","region","where","location"]):
         return _chart_city_ranking(ctx)
@@ -1646,22 +1487,78 @@ def _detect_chart_for_question(question: str, ctx: dict, df: pd.DataFrame) -> "g
     return None
 
 
-# ── SIDEBAR
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── SHARED UI HELPERS
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def page_header(title: str, subtitle: str):
+    st.markdown(f"""
+    <div class="page-header">
+      <div class="page-kicker">NovaMS</div>
+      <h1 class="page-title">{title}</h1>
+      <p class="page-sub">{subtitle}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def narrative(html: str):
+    st.markdown(f'<div class="narrative-box">{html}</div>', unsafe_allow_html=True)
+
+
+def kpi_card(label: str, value: str, sub: str = "", delta: str = "", delta_positive: bool = True):
+    """Render one flat, left-aligned KPI tile — no emoji, single ink color, optional delta pill."""
+    delta_html = f'<div class="kpi-badge {"up" if delta_positive else "down"}">{delta}</div>' if delta else ""
+    sub_html   = f'<div class="kpi-sub">{sub}</div>' if sub else ""
+    st.markdown(f"""
+    <div class="kpi-card">
+      <div class="kpi-label">{label}</div>
+      {delta_html}
+      <div class="kpi-value">{value}</div>
+      {sub_html}
+    </div>""", unsafe_allow_html=True)
+
+
+def missing_data_notice(missing_cols: list[str], context: str):
+    st.markdown(f"""
+    <div class="missing-box">
+      ⚠️ <b>Limited data for {context}.</b> Your uploaded file doesn't include: {", ".join(f"<code>{c}</code>" for c in missing_cols)}.
+      This section only shows analytics that can be computed honestly from the columns you do have —
+      nothing below is simulated to fill the gap.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+NAV_PAGES = [
+    "Executive Overview",
+    "Sales Analytics",
+    "Delivery Analytics",
+    "Inventory Intelligence",
+    "Operations",
+    "Customer Analytics",
+    "Finance",
+    "AI Analyst",
+    "Data Explorer",
+]
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── SIDEBAR: BRAND · NAVIGATION · DATA SOURCE · FILTERS · SETTINGS · AI MODE
 # ══════════════════════════════════════════════════════════════════════════════════
 
 with st.sidebar:
     st.markdown("""
-    <div style="text-align:center;padding:12px 0 20px">
-      <div style="width:44px;height:44px;background:linear-gradient(135deg,#6366f1,#06b6d4);border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;margin-bottom:8px">N</div>
-      <div style="font-size:13px;font-weight:600;background:linear-gradient(90deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Nova-MS</div>
-      <div style="font-size:10px;color:#4a5a7a;margin-top:2px">Sales Dashboard v5.0</div>
+    <div class="nav-brand">
+      <div class="logo">N</div>
+      <div class="name">NovaMS</div>
+      <div class="tag">Nova Management Solutions</div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("#### 📂 Data Source")
+    st.markdown("#### 🧭 Navigation")
+    active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
 
-    # Accepts both CSV and Excel (.xlsx) exports — works with Zepto,
-    # Blinkit, Swiggy Instamart, or any similarly-structured export.
+    st.markdown("---")
+    st.markdown("#### 📂 Data Source")
     uploaded = st.file_uploader(
         "Upload your CSV or Excel file",
         type=["csv", "xlsx"],
@@ -1670,21 +1567,19 @@ with st.sidebar:
     )
     st.markdown("---")
 
-    # Always start from the default/sample dataset so the dashboard never
-    # renders empty, even if the upload fails validation.
     df_raw = load_default()
-
     if uploaded is not None:
         try:
             df_raw = load_user_file(uploaded)
             file_kind = "Excel" if uploaded.name.lower().endswith(".xlsx") else "CSV"
             st.success(f"✅ Loaded {len(df_raw):,} rows from **{uploaded.name}** ({file_kind})")
+            city_map = st.session_state.get("_city_standardization", {})
+            if city_map:
+                st.info("🏙️ Standardized city names: " + ", ".join(f"{k}→{v}" for k, v in city_map.items()))
         except ValueError as e:
-            # Expected, user-facing problems: bad type, missing columns, empty file
             st.error(f"❌ {e}")
             st.info("↩️ Falling back to the default sample dataset until a valid file is uploaded.")
         except Exception as e:
-            # Anything unexpected — still fail gracefully rather than crashing the app
             st.error(f"❌ Unexpected error while loading **{uploaded.name}**: {e}")
             st.info("↩️ Falling back to the default sample dataset.")
 
@@ -1701,13 +1596,10 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("#### ⚙️ Settings")
-    auto_refresh = st.checkbox("Auto Refresh (30s)", value=False)
-    show_raw     = st.checkbox("Show Raw Data Table",       value=False)
-    show_stats   = st.checkbox("Show Statistical Analysis", value=True)
+    show_raw     = st.checkbox("Show Raw Data Table (Executive Overview)", value=False)
+    show_stats   = st.checkbox("Show Statistical Analysis (Sales Analytics)", value=True)
 
     st.markdown("---")
-
-    # ── Phase 4: AI Mode ─────────────────────────────────────────────────────────
     st.markdown("#### 🤖 BlinkBot AI Mode")
     use_ai_mode = st.toggle("Enable LLM Mode", value=False, help="Use Claude (Anthropic) for natural-language answers")
 
@@ -1717,7 +1609,7 @@ with st.sidebar:
             api_key = secret_key.strip().strip('"').strip("'")
             st.markdown("""
             <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
-                        border-radius:8px;padding:8px 10px;font-size:10px;color:#34d399">
+                        border-radius:8px;padding:8px 10px;font-size:10px;color:#16A34A">
               ✅ Claude key loaded from secrets
             </div>""", unsafe_allow_html=True)
         else:
@@ -1728,24 +1620,22 @@ with st.sidebar:
                 help="Get a key at console.anthropic.com → API Keys",
             )
             api_key = _raw_key.strip().strip('"').strip("'").strip() if _raw_key else ""
-
             _is_placeholder = api_key and (
                 "your-key"    in api_key.lower()
                 or "your_key" in api_key.lower()
                 or "api-key"  in api_key.lower()
                 or len(api_key) < 10
             )
-
             if api_key and not _is_placeholder:
                 st.markdown("""
                 <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
-                            border-radius:8px;padding:8px 10px;font-size:10px;color:#34d399">
+                            border-radius:8px;padding:8px 10px;font-size:10px;color:#16A34A">
                   ✅ Claude key set — LLM mode active
                 </div>""", unsafe_allow_html=True)
             elif _is_placeholder:
                 st.markdown("""
                 <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
-                            border-radius:8px;padding:8px 10px;font-size:10px;color:#f87171">
+                            border-radius:8px;padding:8px 10px;font-size:10px;color:#DC2626">
                   ❌ Key looks invalid.<br><br>
                   Go to <strong>console.anthropic.com</strong> → API Keys.<br>
                   Paste your key directly — no quotes, no spaces.
@@ -1760,22 +1650,22 @@ with st.sidebar:
                 </div>""", unsafe_allow_html=True)
                 api_key = ""
         st.markdown(f"""
-        <div style="font-size:9px;color:#4a5a7a;margin-top:6px">
-          Model: <span style="color:#a5b4fc;font-family:monospace">{_CLAUDE_MODEL}</span><br>
+        <div style="font-size:9px;color:#64748B;margin-top:6px">
+          Model: <span style="color:#1D4DFF;font-family:monospace">{_CLAUDE_MODEL}</span><br>
           Claude AI Analyst · History: last {_LLM_HISTORY_LIMIT} turns
         </div>""", unsafe_allow_html=True)
     else:
         api_key = ""
         st.markdown("""
-        <div style="background:rgba(99,130,255,.06);border:1px solid rgba(99,130,255,.12);
-                    border-radius:8px;padding:8px 10px;font-size:10px;color:#8899bb">
+        <div style="background:rgba(15,23,42,.06);border:1px solid #E2E8F0;
+                    border-radius:8px;padding:8px 10px;font-size:10px;color:#475569">
           🔧 Rule-based mode — fast &amp; offline.<br>Toggle above to enable LLM responses.
         </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
     st.markdown("""
-    <div style="font-size:10px;color:#4a5a7a;text-align:center">
-      Developed by <strong style="color:#a5b4fc">Ayush Mishra</strong><br>
+    <div style="font-size:10px;color:#64748B;text-align:center">
+      Developed by <strong style="color:#1D4DFF">Ayush Mishra</strong><br>
       FastAPI · Pandas · SciPy · Streamlit
     </div>
     """, unsafe_allow_html=True)
@@ -1792,27 +1682,15 @@ if sel_inf  != "All": df = df[df["Influencer Active"] == sel_inf]
 if sel_prod != "All": df = df[df["Product Name"]      == sel_prod]
 if search:            df = df[df["Product Name"].str.contains(search, case=False, na=False)]
 
-
-# ══════════════════════════════════════════════════════════════════════════════════
-# ── PRE-COMPUTE EVERYTHING  (all math happens here, before any rendering)
-# ══════════════════════════════════════════════════════════════════════════════════
-
-st.markdown("""
-<div style="background:linear-gradient(135deg,#0d1628,#121d35);border:1px solid rgba(99,130,255,.12);border-radius:16px;padding:20px 24px;margin-bottom:20px">
-  <h1 style="margin:0;font-size:22px;font-weight:700;background:linear-gradient(90deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
-    Ayush Intelligence Hub
-  </h1>
-  <p style="margin:4px 0 0;font-size:12px;color:#4a5a7a">
-    Real-Time Business Insights · Statistical Analytics · ML Forecasting · Developed by Ayush Mishra
-  </p>
-</div>
-""", unsafe_allow_html=True)
-
 if df.empty:
-    st.warning("⚠️ No data matches your filters. Please adjust the filters.")
+    page_header("NovaMS", "Nova Management Solutions")
+    st.warning("⚠️ No data matches your filters. Please adjust the filters in the sidebar.")
     st.stop()
 
-# ── Run all calculations ──────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PRE-COMPUTE EVERYTHING ONCE  (shared across every page)
+# ══════════════════════════════════════════════════════════════════════════════════
+
 kpis       = compute_kpis(df)
 inf_stats  = compute_influencer_stats(df)
 stats_data = compute_statistics(df) if show_stats and len(df) >= 5 else None
@@ -1824,842 +1702,974 @@ defects    = compute_order_defects(int(kpis["total_orders"]))
 wow        = compute_wow_metrics(kpis)
 insights   = compute_ai_insights(df, kpis, inf_stats if inf_stats["available"] else {"rev_lift":0,"p_value":1,"significant":False})
 
+_present_delivery_cols   = [c for c in OPTIONAL_DELIVERY_COLS if c in df.columns]
+_missing_delivery_cols   = [c for c in OPTIONAL_DELIVERY_COLS if c not in df.columns]
+_present_operations_cols = [c for c in OPTIONAL_OPERATIONS_COLS if c in df.columns]
+_missing_operations_cols = [c for c in OPTIONAL_OPERATIONS_COLS if c not in df.columns]
+
 
 # ══════════════════════════════════════════════════════════════════════════════════
-# ── RENDERING STARTS HERE  (zero calculations below)
+# ── PAGE 1 — EXECUTIVE OVERVIEW
 # ══════════════════════════════════════════════════════════════════════════════════
 
-# ── KPI CARDS ────────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">KEY PERFORMANCE INDICATORS</div>', unsafe_allow_html=True)
-c1,c2,c3,c4,c5,c6 = st.columns(6)
-kpi_rows = [
-    (c1,"💰","Total Revenue",   fmt(kpis["total_rev"]),                     f"σ = {fmt(kpis['rev_std'])}",         "#a5b4fc","↑ +12.4%","up"),
-    (c2,"📈","Total Profit",    fmt(kpis["total_profit"]),                  "Net margin earnings",                  "#6ee7b7","↑ +8.1%", "up"),
-    (c3,"🛒","Total Orders",    f"{int(kpis['total_orders']):,}",           "Units sold",                           "#fcd34d","↑ +5.3%", "up"),
-    (c4,"%", "Profit Margin",   f"{kpis['margin']:.1f}%",                  "Revenue to profit ratio",              "#fca5a5","↑ +2.1%", "up"),
-    (c5,"⭐","Top Category",    kpis["cat_rev"].index[0]  if len(kpis["cat_rev"])  else "—", fmt(kpis["cat_rev"].iloc[0])  if len(kpis["cat_rev"])  else "—", "#67e8f9","Leader","up"),
-    (c6,"📍","Top Region",      kpis["city_rev"].index[0] if len(kpis["city_rev"]) else "—", fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—", "#c4b5fd","Leader","up"),
-]
-for col, icon, label, val, sub, clr, badge, cls in kpi_rows:
-    with col:
-        st.markdown(f"""
-        <div class="kpi-card">
-          <div style="font-size:20px;margin-bottom:8px">{icon}</div>
-          <div class="kpi-label">{label}</div>
-          <div class="kpi-value" style="color:{clr}">{val}</div>
-          <div class="kpi-badge {cls}">{badge}</div>
-          <div class="kpi-sub">{sub}</div>
-        </div>""", unsafe_allow_html=True)
+def render_executive_overview():
+    page_header("Executive Overview", "Real-Time Business Snapshot · Developed by Ayush Mishra")
 
-st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="section-head">Key Performance Indicators</div>', unsafe_allow_html=True)
+    c1,c2,c3,c4,c5,c6 = st.columns(6)
+    avg_delivery = delivery["avg"]
+    with c1: kpi_card("Total Revenue", fmt(kpis["total_rev"]), f"σ = {fmt(kpis['rev_std'])}", "+12.4% WoW", True)
+    with c2: kpi_card("Total Profit", fmt(kpis["total_profit"]), "Net margin earnings", "+8.1% WoW", True)
+    with c3: kpi_card("Total Orders", f"{int(kpis['total_orders']):,}", "Units sold", "+5.3% WoW", True)
+    with c4: kpi_card("Profit Margin", f"{kpis['margin']:.1f}%", "Revenue to profit ratio", "+2.1 pts", True)
+    with c5: kpi_card("Avg Delivery Time", f"{avg_delivery:.1f} min", delivery["status"], f"OTD {delivery['otd_pct']:.0f}%", delivery['otd_pct'] >= 85)
+    with c6: kpi_card("Top Region", kpis["city_rev"].index[0] if len(kpis["city_rev"]) else "—", fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—")
 
-# ── CHARTS ROW 1 ─────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">SALES & REVENUE ANALYTICS</div>', unsafe_allow_html=True)
-col1, col2 = st.columns(2)
-with col1:
-    city_data = df.groupby("City")["Total Revenue"].sum().sort_values(ascending=False).reset_index()
-    fig = px.bar(city_data, x="City", y="Total Revenue", color="City",
-                 color_discrete_map=CITY_CLR, title="Revenue by City", labels={"Total Revenue":"Revenue (₹)"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff", showlegend=False)
-    fig.update_traces(marker_line_width=0, opacity=0.85)
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    cat_data = df.groupby("Category")["Total Revenue"].sum().reset_index()
-    fig = px.pie(cat_data, values="Total Revenue", names="Category",
-                 color="Category", color_discrete_map=CAT_CLR, title="Category Distribution", hole=0.55)
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff")
-    fig.update_traces(textinfo="label+percent", textfont_size=10)
-    st.plotly_chart(fig, use_container_width=True)
+    c7,c8,c9 = st.columns(3)
+    with c7: kpi_card("Top Category", kpis["cat_rev"].index[0] if len(kpis["cat_rev"]) else "—", fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—")
+    with c8: kpi_card("Avg Order Value", fmt(kpis["aov"]), "Revenue per order")
+    with c9: kpi_card("On-Time Delivery", f"{delivery['otd_pct']:.1f}%", delivery["status"])
 
-# ── CHARTS ROW 2 ─────────────────────────────────────────────────────────────────
-col1, col2 = st.columns(2)
-with col1:
-    top_prod = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False).head(10).reset_index()
-    fig = px.bar(top_prod, x="Total Revenue", y="Product Name", orientation="h",
-                 title="Top 10 Products by Revenue", color="Total Revenue",
-                 color_continuous_scale=["#6366f1","#06b6d4","#10b981"])
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff", coloraxis_showscale=False)
-    fig.update_yaxes(autorange="reversed", gridcolor="rgba(99,130,255,.06)")
-    fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    fig = px.scatter(df, x="Orders", y="Total Revenue", color="Category",
-                     color_discrete_map=CAT_CLR, hover_name="Product Name",
-                     hover_data={"City":True,"Discount":True},
-                     title="Orders vs Revenue (Scatter)", labels={"Total Revenue":"Revenue (₹)"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff")
-    fig.update_traces(marker=dict(size=7, opacity=0.7))
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    narrative(
+        f"<b>What's happening:</b> Revenue stands at <b>{fmt(kpis['total_rev'])}</b> across "
+        f"<b>{int(kpis['total_orders']):,}</b> orders, led by <b>{kpis['cat_rev'].index[0]}</b> in "
+        f"<b>{kpis['city_rev'].index[0]}</b>. <b>What to do:</b> protect the leading category/city combo "
+        f"while running targeted promotions in <b>{kpis['city_rev'].index[-1]}</b>, your weakest region."
+    )
 
-# ── HEATMAP ───────────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">CITY × CATEGORY HEATMAP</div>', unsafe_allow_html=True)
-pivot = df.pivot_table(index="Category", columns="City", values="Total Revenue", aggfunc="sum", fill_value=0)
-fig = go.Figure(data=go.Heatmap(
-    z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
-    colorscale=[[0,"#0d1628"],[0.3,"#1e1b6e"],[0.6,"#3730a3"],[1,"#6366f1"]],
-    text=[[fmt(v) for v in row] for row in pivot.values],
-    texttemplate="%{text}", hovertemplate="<b>%{y}</b><br>%{x}: %{text}<extra></extra>",
-))
-fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Intensity (City × Category)", title_font_color="#f0f4ff", height=280)
-st.plotly_chart(fig, use_container_width=True)
-
-# ── INFLUENCER + DISCOUNT ────────────────────────────────────────────────────────
-col1, col2 = st.columns(2)
-with col1:
-    inf_data = df.groupby(["Category","Influencer Active"])["Total Revenue"].mean().reset_index()
-    inf_data.columns = ["Category","Influencer","Avg Revenue"]
-    fig = px.bar(inf_data, x="Category", y="Avg Revenue", color="Influencer",
-                 barmode="group", title="Influencer Impact by Category",
-                 color_discrete_map={"Yes":"#6366f1","No":"#4a5a7a"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff")
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    disc_data = df.groupby("Discount").agg(
-        Avg_Revenue=("Total Revenue","mean"),
-        Avg_Orders=("Orders","mean"),
-        Count=("Orders","count")
-    ).reset_index()
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Revenue"],
-                         name="Avg Revenue", marker_color="#6366f1", opacity=0.85), secondary_y=False)
-    fig.add_trace(go.Scatter(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Orders"],
-                             name="Avg Orders", mode="lines+markers",
-                             line=dict(color="#06b6d4", width=2)), secondary_y=True)
-    fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#f0f4ff")
-    fig.update_yaxes(tickprefix="₹", secondary_y=False)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ── PRICE RANGE ───────────────────────────────────────────────────────────────────
-price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
-price_data["Price Tier"] = price_data["Price Tier"].astype(str)
-fig = px.bar(price_data, x="Price Tier", y="Total Revenue", color="Price Tier",
-             color_discrete_sequence=PAL, title="Revenue by Price Tier", labels={"Total Revenue":"Revenue (₹)"})
-fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff", showlegend=False)
-fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-fig.update_traces(marker_line_width=0, opacity=0.85)
-st.plotly_chart(fig, use_container_width=True)
-
-# ── STATISTICAL ANALYSIS ─────────────────────────────────────────────────────────
-if stats_data:
-    sd = stats_data
-    st.markdown('<div class="section-head">STATISTICAL ANALYSIS</div>', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown('<div style="background:#0d1628;border:1px solid rgba(99,130,255,.12);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#a5b4fc;margin-bottom:10px">📊 Descriptive Statistics</div>', unsafe_allow_html=True)
-        for label, val in [
-            ("Mean Revenue",   fmt(sd["mean"])),
-            ("Median Revenue", fmt(sd["median"])),
-            ("Std Deviation",  fmt(sd["std"])),
-            ("Skewness",       f"{sd['skewness']:.3f}"),
-            ("Kurtosis",       f"{sd['kurtosis']:.3f}"),
-            ("Normality p",    f"{sd['p_norm']:.4f}"),
-        ]:
-            st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
-        normal_txt = "✓ Normally distributed" if sd["is_normal"] else "⚠ Not normally distributed"
-        normal_clr = "#34d399" if sd["is_normal"] else "#fcd34d"
-        st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{normal_clr};background:rgba(99,130,255,.06);padding:7px 10px;border-radius:7px">{normal_txt}</div></div>', unsafe_allow_html=True)
-    with c2:
-        outliers = sd["outliers"]
-        st.markdown(f'<div style="background:#0d1628;border:1px solid rgba(99,130,255,.12);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#a5b4fc;margin-bottom:10px">⚠ Outlier Detection ({len(outliers)} outliers)</div>', unsafe_allow_html=True)
-        if len(outliers) > 0:
-            for _, row in outliers.head(6).iterrows():
-                st.markdown(f'<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:7px;padding:8px 10px;margin-bottom:5px"><div style="font-size:11px;font-weight:600;color:#f0f4ff">{row["Product Name"]}</div><div style="font-size:9px;color:#8899bb">{row["City"]} · {row["Category"]}</div><div style="display:flex;justify-content:space-between;margin-top:3px"><span style="font-size:10px;color:#67e8f9">{fmt(row["Total Revenue"])}</span><span style="font-size:10px;color:#fca5a5;font-family:monospace">Z={row["Z-Score"]}</span></div></div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="font-size:11px;color:#4a5a7a;text-align:center;padding:20px">No significant outliers</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c3:
-        r_disc, p_disc = sd["r_disc"], sd["p_disc"]
-        r_rev,  p_rev  = sd["r_rev"],  sd["p_rev"]
-        st.markdown('<div style="background:#0d1628;border:1px solid rgba(99,130,255,.12);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#a5b4fc;margin-bottom:10px">🔗 Correlation Analysis</div>', unsafe_allow_html=True)
-        for label, val in [
-            ("Discount → Orders (r)", f"{r_disc:.3f}"),
-            ("Discount → Orders (p)", f"{p_disc:.4f}"),
-            ("Revenue → Profit (r)",  f"{r_rev:.3f}"),
-            ("Revenue → Profit (p)",  f"{p_rev:.4f}"),
-        ]:
-            st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
-        for pair, r, p in [("Discount ↔ Orders", r_disc, p_disc), ("Revenue ↔ Profit", r_rev, p_rev)]:
-            sig = p < 0.05; direction = "positive" if r > 0 else "negative"
-            txt = f"{'Strong' if abs(r) > 0.5 else 'Weak'} {direction} — {'significant ✓' if sig else 'not significant'}"
-            clr = "#34d399" if sig else "#fcd34d"
-            st.markdown(f'<div style="background:rgba(99,102,241,.07);border-radius:6px;padding:7px 10px;margin-top:6px"><div style="font-size:10px;font-weight:600;color:#a5b4fc">{pair}</div><div style="font-size:10px;color:{clr};margin-top:2px">{txt}</div></div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    fig = px.imshow(sd["corr_matrix"], text_auto=True,
-                    color_continuous_scale=["#ef4444","#0d1628","#6366f1"],
-                    zmin=-1, zmax=1, title="Full Correlation Matrix")
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#f0f4ff", height=350)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ── FORECASTING ───────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">SALES FORECASTING — LINEAR REGRESSION</div>', unsafe_allow_html=True)
-if forecast:
-    fc = forecast
-    col1, col2 = st.columns([2, 1])
+    st.markdown('<div class="section-head">SALES SNAPSHOT</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
     with col1:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=fc["xs"], y=fc["upper"], fill=None, mode="lines", line=dict(width=0), showlegend=False))
-        fig.add_trace(go.Scatter(x=fc["xs"], y=fc["lower"], fill="tonexty", mode="lines", line=dict(width=0), fillcolor="rgba(99,102,241,.08)", name="95% CI"))
-        fig.add_trace(go.Scatter(x=fc["xs"], y=fc["actual_vals"], mode="lines+markers", name="Actual", line=dict(color="#6366f1", width=2), marker=dict(size=4)))
-        fig.add_trace(go.Scatter(x=fc["xs"], y=fc["trend_vals"], mode="lines", name="Trend", line=dict(color="#06b6d4", width=2, dash="dash")))
-        fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
-        fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#f0f4ff", height=280)
+        city_data = df.groupby("City")["Total Revenue"].sum().sort_values(ascending=False).reset_index()
+        fig = px.bar(city_data, x="City", y="Total Revenue", color="City",
+                     color_discrete_map=CITY_CLR, title="Revenue by City", labels={"Total Revenue":"Revenue (₹)"})
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+        fig.update_traces(marker_line_width=0, opacity=0.85)
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
         st.plotly_chart(fig, use_container_width=True)
     with col2:
-        growth_clr = "#34d399" if fc["growth_pct"] >= 0 else "#f87171"
-        st.markdown(f"""
-        <div style="background:#0d1628;border:1px solid rgba(99,130,255,.12);border-radius:12px;padding:20px">
-          <div style="font-size:10px;color:#4a5a7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Forecast Value</div>
-          <div style="font-size:28px;font-weight:700;font-family:monospace;background:linear-gradient(90deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{fmt(fc['next_val'])}</div>
-          <div style="display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;margin:8px 0;background:{'rgba(16,185,129,.12)' if fc['growth_pct']>=0 else 'rgba(239,68,68,.12)'};color:{growth_clr}">
-            {'↑' if fc['growth_pct']>=0 else '↓'} {abs(fc['growth_pct']):.1f}% vs avg
-          </div>
-        """, unsafe_allow_html=True)
-        for label, val in [("R² Score", f"{fc['r2']:.4f}"), ("Slope β₁", f"{fc['slope']:.3f}"), ("CI Band", fmt(fc["ci"]))]:
-            st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
-        quality = "✓ Good fit" if fc["r2"] > 0.6 else "⚠ Low R² — noisy data"
-        q_clr   = "#34d399" if fc["r2"] > 0.6 else "#fcd34d"
-        st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{q_clr};background:rgba(99,130,255,.06);padding:7px 10px;border-radius:7px">{quality}</div></div>', unsafe_allow_html=True)
+        cat_data = df.groupby("Category")["Total Revenue"].sum().reset_index()
+        fig = px.pie(cat_data, values="Total Revenue", names="Category",
+                     color="Category", color_discrete_map=CAT_CLR, title="Category Distribution", hole=0.55)
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+        fig.update_traces(textinfo="label+percent", textfont_size=10)
+        st.plotly_chart(fig, use_container_width=True)
 
-# ── AI INSIGHTS ───────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">AI BUSINESS INSIGHTS</div>', unsafe_allow_html=True)
-cols = st.columns(3)
-for i, (emoji, title, body) in enumerate(insights):
-    with cols[i % 3]:
-        st.markdown(f'<div class="insight-card"><div style="font-size:22px;margin-bottom:8px">{emoji}</div><div class="insight-title">{title}</div><div class="insight-body">{body}</div></div><br>', unsafe_allow_html=True)
-
-# ── WEEK OVER WEEK ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">WEEK-OVER-WEEK COMPARISON</div>', unsafe_allow_html=True)
-w1,w2,w3,w4 = st.columns(4)
-wow_rows = [
-    (w1,"💰","Revenue This Week",  kpis["total_rev"],    wow["previous"]["total_rev"],    False),
-    (w2,"🛒","Orders This Week",   kpis["total_orders"], wow["previous"]["total_orders"], False),
-    (w3,"📈","Profit This Week",   kpis["total_profit"], wow["previous"]["total_profit"], False),
-    (w4,"%", "Margin This Week",   kpis["margin"],       wow["previous"]["margin"],       True),
-]
-for col, icon, label, curr, prev, is_pct in wow_rows:
-    badge, up = pct_change_label(curr, prev)
-    clr      = "#34d399" if up else "#f87171"
-    val      = fmt(curr) if not is_pct else f"{curr:.1f}%"
-    prev_val = fmt(prev) if not is_pct else f"{prev:.1f}%"
-    with col:
-        st.markdown(f'<div class="kpi-card" style="border-color:rgba(99,130,255,.2)"><div style="font-size:18px;margin-bottom:6px">{icon}</div><div class="kpi-label">{label}</div><div class="kpi-value" style="color:#a5b4fc;font-size:20px">{val}</div><div style="font-size:10px;font-weight:600;color:{clr};margin-top:4px">{badge}</div><div class="kpi-sub">Last week: {prev_val}</div></div>', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── DELIVERY PERFORMANCE ──────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">🚀 DELIVERY PERFORMANCE</div>', unsafe_allow_html=True)
-dl = delivery
-col1, col2, col3 = st.columns(3)
-with col1:
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number", value=dl["otd_pct"],
-        title={"text":"On-Time Delivery %","font":{"color":"#8899bb","size":13}},
-        number={"suffix":"%","font":{"color":dl["status_color"],"size":28}},
-        gauge={"axis":{"range":[0,100],"tickcolor":"#4a5a7a"},
-               "bar":{"color":dl["status_color"]}, "bgcolor":"#0d1628",
-               "steps":[{"range":[0,85],"color":"rgba(239,68,68,.15)"},
-                         {"range":[85,95],"color":"rgba(245,158,11,.15)"},
-                         {"range":[95,100],"color":"rgba(16,185,129,.15)"}],
-               "threshold":{"line":{"color":"#fff","width":2},"thickness":0.75,"value":95}},
+    st.markdown('<div class="section-head">CITY × CATEGORY HEATMAP</div>', unsafe_allow_html=True)
+    pivot = df.pivot_table(index="Category", columns="City", values="Total Revenue", aggfunc="sum", fill_value=0)
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
+        colorscale=[[0,"#EEF2FF"],[0.35,"#C7D2FE"],[0.7,"#818CF8"],[1,"#1D4DFF"]],
+        text=[[fmt(v) for v in row] for row in pivot.values],
+        texttemplate="%{text}", hovertemplate="<b>%{y}</b><br>%{x}: %{text}<extra></extra>",
     ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=220, margin=dict(l=20,r=20,t=40,b=10))
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown(f'<div style="text-align:center;font-size:12px;font-weight:600;color:{dl["status_color"]}">{dl["status"]}</div>', unsafe_allow_html=True)
-with col2:
-    fig = go.Figure(go.Bar(
-        x=[dl["p50"],dl["avg"],dl["p90"],dl["promise"]],
-        y=["P50","Avg","P90","Promise"], orientation="h",
-        marker_color=["#10b981","#6366f1","#ef4444","#f59e0b"], marker_line_width=0,
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=220,
-                      title=dict(text="Delivery Time (minutes)", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=40,t=40,b=10),
-                      xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
-                      yaxis=dict(gridcolor="rgba(0,0,0,0)"))
-    st.plotly_chart(fig, use_container_width=True)
-with col3:
-    bar_colors = ["#ef4444" if x > dl["promise"]+2 else "#10b981" for x in dl["hist_centers"]]
-    fig = go.Figure(go.Bar(x=dl["hist_centers"], y=dl["hist_counts"], marker_color=bar_colors, marker_line_width=0))
-    fig.add_vline(x=dl["promise"], line_dash="dash", line_color="#f59e0b",
-                  annotation_text="10-min promise", annotation_font_color="#f59e0b")
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=220,
-                      title=dict(text="Order Distribution by Time", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=40,b=10),
-                      xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
-                      yaxis=dict(gridcolor="rgba(99,130,255,.05)"))
+    fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Intensity (City × Category)", title_font_color="#0F172A", height=280)
     st.plotly_chart(fig, use_container_width=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="section-head">AI BUSINESS INSIGHTS</div>', unsafe_allow_html=True)
+    cols = st.columns(3)
+    for i, (emoji, title, body) in enumerate(insights):
+        with cols[i % 3]:
+            st.markdown(f'<div class="insight-card"><div class="insight-title">{title}</div><div class="insight-body">{body}</div></div><br>', unsafe_allow_html=True)
 
-# ── UNIT ECONOMICS ────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">💰 UNIT ECONOMICS — CONTRIBUTION MARGIN</div>', unsafe_allow_html=True)
-ue = unit_econ
-col1, col2 = st.columns(2)
-with col1:
-    labels = ["Revenue","COGS","Rider Pay","Packaging","Gateway Fee","Promos","Net Profit"]
-    values = [ue["avg_rev"],-ue["cogs"],-ue["rider"],-ue["packaging"],-ue["gateway"],-ue["promos"],ue["net_profit"]]
-    fig = go.Figure(go.Waterfall(
-        name="Unit Economics", orientation="v",
-        measure=["absolute","relative","relative","relative","relative","relative","total"],
-        x=labels, y=values, text=[fmt(abs(v)) for v in values], textposition="outside",
-        connector={"line":{"color":"rgba(99,130,255,.3)"}},
-        decreasing={"marker":{"color":"#ef4444"}},
-        increasing={"marker":{"color":"#10b981"}},
-        totals={"marker":{"color":"#6366f1"}},
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=320,
-                      title=dict(text=f"Revenue → Net Profit | CM: {ue['cm_pct']:.1f}%", font=dict(color="#f0f4ff",size=12)),
-                      margin=dict(l=10,r=10,t=50,b=10), yaxis=dict(gridcolor="rgba(99,130,255,.05)"), showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    fig = go.Figure(go.Pie(
-        labels=["COGS (52%)","Rider Pay (12%)","Packaging (3%)","Gateway (2%)","Promos (5%)","Net Profit (26%)"],
-        values=[ue["cogs"],ue["rider"],ue["packaging"],ue["gateway"],ue["promos"],max(0,ue["net_profit"])],
-        hole=0.6, marker=dict(colors=["#6366f1","#06b6d4","#f59e0b","#8b5cf6","#ec4899","#10b981"]),
-        textinfo="label+percent", textfont=dict(size=10),
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=320,
-                      title=dict(text="Cost Structure Breakdown", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=9)))
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown('<div class="section-head">Week-over-Week Comparison</div>', unsafe_allow_html=True)
+    w1,w2,w3,w4 = st.columns(4)
+    wow_rows = [
+        (w1,"Revenue This Week",  kpis["total_rev"],    wow["previous"]["total_rev"],    False),
+        (w2,"Orders This Week",   kpis["total_orders"], wow["previous"]["total_orders"], False),
+        (w3,"Profit This Week",   kpis["total_profit"], wow["previous"]["total_profit"], False),
+        (w4,"Margin This Week",   kpis["margin"],       wow["previous"]["margin"],       True),
+    ]
+    for col, label, curr, prev, is_pct in wow_rows:
+        badge, up = pct_change_label(curr, prev)
+        val      = fmt(curr) if not is_pct else f"{curr:.1f}%"
+        prev_val = fmt(prev) if not is_pct else f"{prev:.1f}%"
+        with col:
+            kpi_card(label, val, f"Last week: {prev_val}", badge, up)
 
-st.markdown("<br>", unsafe_allow_html=True)
+    if show_raw:
+        st.markdown('<div class="section-head">RAW DATA TABLE</div>', unsafe_allow_html=True)
+        display_cols = ["Product Name","Category","City","Original Price","Current Price",
+                        "Discount","Orders","Total Revenue","Profit","Profit Margin","Influencer Active"]
+        show_df = df[[c for c in display_cols if c in df.columns]].copy()
+        show_df["Profit Margin"] = show_df["Profit Margin"].round(1).astype(str) + "%"
+        st.dataframe(show_df, use_container_width=True, height=350)
+        st.download_button("⬇ Download Filtered CSV", df.to_csv(index=False), "novams_filtered.csv", "text/csv")
 
-# ── ORDER DEFECT RATE ────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">🔍 ORDER QUALITY — DEFECT RATE</div>', unsafe_allow_html=True)
-df_d = defects
-col1, col2 = st.columns(2)
-with col1:
-    fig = go.Figure(go.Funnel(
-        y=df_d["funnel_labels"], x=df_d["funnel_y"],
-        textinfo="value+percent initial",
-        marker=dict(color=["#6366f1","#8b5cf6","#f59e0b","#ef4444","#10b981"]),
-        connector=dict(line=dict(color="rgba(99,130,255,.2)", width=1)),
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=300,
-                      title=dict(text=f"Order Quality Funnel | ODR: {df_d['odr_pct']:.1f}%", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10))
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    fig = go.Figure(go.Bar(
-        x=["Expired/Damaged","Missing Items","Cancelled (OOS)"],
-        y=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
-        marker_color=["#ef4444","#f59e0b","#8b5cf6"], marker_line_width=0,
-        text=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
-        textposition="outside", textfont=dict(color="#f0f4ff"),
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=300,
-                      title=dict(text="Defect Breakdown by Category", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10),
-                      yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
-    st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── INVENTORY INTELLIGENCE ────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">📦 INVENTORY INTELLIGENCE — STOCK ALERTS</div>', unsafe_allow_html=True)
-col1, col2 = st.columns([2, 1])
-with col1:
-    st.markdown('<div style="font-size:11px;font-weight:600;color:#a5b4fc;margin-bottom:10px">⚡ Top 10 High-Risk Inventory Items</div>', unsafe_allow_html=True)
-    for _, row in inventory.iterrows():
-        st.markdown(
-            f'<div style="background:{row["_bg"]};border:1px solid {row["_border"]};border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">'
-            f'<div><div style="font-size:12px;font-weight:600;color:#f0f4ff">{row["Product"]}</div>'
-            f'<div style="font-size:10px;color:#8899bb;margin-top:2px">Stock: {row["Stock_Left"]} · Daily: {row["Daily_Sales"]} · Covers: {row["Days_Cover"]} days</div></div>'
-            f'<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:{row["_color"]}">{row["Risk"]}</div>'
-            f'<div style="font-size:10px;color:{row["_color"]};margin-top:2px">{row["Action"]}</div></div></div>',
-            unsafe_allow_html=True,
-        )
-with col2:
-    critical_count = inventory["Risk"].str.contains("CRITICAL").sum()
-    low_count      = inventory["Risk"].str.contains("LOW").sum()
-    ok_count       = inventory["Risk"].str.contains("OK").sum()
-    fig = go.Figure(go.Pie(
-        labels=["Critical 🔴","Low Stock 🟡","OK 🟢"],
-        values=[critical_count, low_count, ok_count],
-        hole=0.65, marker=dict(colors=["#ef4444","#f59e0b","#10b981"]),
-        textinfo="label+value", textfont=dict(size=11),
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=280,
-                      title=dict(text="Stock Risk Distribution", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)))
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown(f'<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:700;color:#ef4444">{critical_count}</div><div style="font-size:10px;color:#8899bb">Products need immediate reorder</div></div>', unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── CUSTOMER RETENTION ────────────────────────────────────────────────────────────
-st.markdown('<div class="section-head">👥 CUSTOMER RETENTION — NEW vs REPEAT</div>', unsafe_allow_html=True)
-col1, col2 = st.columns(2)
-with col1:
-    weeks    = ["Week 1","Week 2","Week 3","Week 4","Week 5","Week 6"]
-    new_c    = [1200,980,1100,870,1050,920]
-    repeat_c = [800,920,1050,1100,1200,1280]
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name="New Customers",    x=weeks, y=new_c,    marker_color="#6366f1", marker_line_width=0))
-    fig.add_trace(go.Bar(name="Repeat Customers", x=weeks, y=repeat_c, marker_color="#10b981", marker_line_width=0))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=280,
-                      barmode="group", title=dict(text="New vs Repeat Customers (Weekly)", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)),
-                      yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    retention_matrix = [[100,68,52,41],[100,71,55,43],[100,65,48,38],[100,73,58,46]]
-    fig = go.Figure(go.Heatmap(
-        z=retention_matrix, x=["W+0","W+1","W+2","W+3"], y=["Week 1","Week 2","Week 3","Week 4"],
-        colorscale=[[0,"#0d1628"],[0.4,"#312e81"],[0.7,"#4338ca"],[1,"#6366f1"]],
-        text=[[f"{v}%" for v in row] for row in retention_matrix],
-        texttemplate="%{text}",
-        hovertemplate="Cohort: %{y}<br>Week: %{x}<br>Retention: %{text}<extra></extra>",
-    ))
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#8899bb", height=280,
-                      title=dict(text="Cohort Retention Table (%)", font=dict(color="#f0f4ff",size=13)),
-                      margin=dict(l=10,r=10,t=50,b=10))
-    st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════════
-# ── DEEP ANALYTICS 1: PARETO / 80-20 ANALYSIS
+# ── PAGE 2 — SALES ANALYTICS
 # ══════════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="section-head">📐 PARETO ANALYSIS — 80/20 REVENUE RULE</div>', unsafe_allow_html=True)
-prod_rev_sorted = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
-cumulative_pct  = (prod_rev_sorted.cumsum() / prod_rev_sorted.sum() * 100).values
-pareto_x        = list(range(1, len(prod_rev_sorted) + 1))
-cutoff_idx      = next((i for i, v in enumerate(cumulative_pct) if v >= 80), len(pareto_x)-1)
-cutoff_products = cutoff_idx + 1
 
-col1, col2 = st.columns([3, 1])
-with col1:
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=prod_rev_sorted.index.tolist(), y=prod_rev_sorted.values,
-        name="Revenue", marker_color="#6366f1", marker_line_width=0, opacity=0.75,
-        yaxis="y",
-    ))
-    fig.add_trace(go.Scatter(
-        x=prod_rev_sorted.index.tolist(), y=cumulative_pct,
-        name="Cumulative %", mode="lines+markers",
-        line=dict(color="#06b6d4", width=2), marker=dict(size=5),
-        yaxis="y2",
-    ))
-    fig.add_hline(y=80, line_dash="dash", line_color="#f59e0b",
-                  annotation_text="80% Revenue Threshold", annotation_font_color="#f59e0b",
-                  annotation_position="top right")
-    fig.add_vrect(
-        x0=-0.5, x1=cutoff_idx + 0.5,
-        fillcolor="rgba(99,102,241,.06)", line_width=0,
-        annotation_text=f"Top {cutoff_products} products",
-        annotation_position="top left", annotation_font_color="#a5b4fc",
+def render_sales_analytics():
+    page_header("Sales Analytics", "Revenue Trends · Product & City Performance · Statistical Analysis")
+
+    narrative(
+        f"<b>What's happening:</b> {len(df):,} transactions generated <b>{fmt(kpis['total_rev'])}</b> "
+        f"at an average order value of <b>{fmt(kpis['aov'])}</b>. "
+        f"<b>Why:</b> performance is concentrated in a handful of top SKUs and cities (see Pareto below). "
+        f"<b>What to do:</b> protect top performers, and use the discount curve to avoid over-discounting."
     )
-    fig.update_layout(
-        **PLOTLY_BASE,
-        title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue",
-                   font=dict(color="#f0f4ff", size=12)),
-        height=300,
-        yaxis =dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(99,130,255,.06)"),
-        yaxis2=dict(title="Cumulative %", overlaying="y", side="right",
-                    range=[0,105], ticksuffix="%", showgrid=False),
-        legend=dict(orientation="h", y=1.1),
-    )
+
+    col1, col2 = st.columns(2)
+    with col1:
+        top_prod = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False).head(10).reset_index()
+        fig = px.bar(top_prod, x="Total Revenue", y="Product Name", orientation="h",
+                     title="Top 10 Products by Revenue", color="Total Revenue",
+                     color_continuous_scale=["#6366f1","#06b6d4","#10b981"])
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", coloraxis_showscale=False)
+        fig.update_yaxes(autorange="reversed", gridcolor="rgba(15,23,42,.06)")
+        fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = px.scatter(df, x="Orders", y="Total Revenue", color="Category",
+                         color_discrete_map=CAT_CLR, hover_name="Product Name",
+                         hover_data={"City":True,"Discount":True},
+                         title="Orders vs Revenue (Scatter)", labels={"Total Revenue":"Revenue (₹)"})
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+        fig.update_traces(marker=dict(size=7, opacity=0.7))
+        fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+        st.plotly_chart(fig, use_container_width=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        inf_data = df.groupby(["Category","Influencer Active"])["Total Revenue"].mean().reset_index() if "Influencer Active" in df.columns else None
+        if inf_data is not None:
+            inf_data.columns = ["Category","Influencer","Avg Revenue"]
+            fig = px.bar(inf_data, x="Category", y="Avg Revenue", color="Influencer",
+                         barmode="group", title="Influencer Impact by Category",
+                         color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
+            fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+            fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            missing_data_notice(["Influencer Active"], "Influencer Impact")
+    with col2:
+        disc_data = df.groupby("Discount").agg(
+            Avg_Revenue=("Total Revenue","mean"), Avg_Orders=("Orders","mean"), Count=("Orders","count")
+        ).reset_index()
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(go.Bar(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Revenue"],
+                             name="Avg Revenue", marker_color="#6366f1", opacity=0.85), secondary_y=False)
+        fig.add_trace(go.Scatter(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Orders"],
+                                 name="Avg Orders", mode="lines+markers",
+                                 line=dict(color="#06b6d4", width=2)), secondary_y=True)
+        fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#0F172A")
+        fig.update_yaxes(tickprefix="₹", secondary_y=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+    price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
+    price_data["Price Tier"] = price_data["Price Tier"].astype(str)
+    fig = px.bar(price_data, x="Price Tier", y="Total Revenue", color="Price Tier",
+                 color_discrete_sequence=PAL, title="Revenue by Price Tier", labels={"Total Revenue":"Revenue (₹)"})
+    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+    fig.update_traces(marker_line_width=0, opacity=0.85)
     st.plotly_chart(fig, use_container_width=True)
-with col2:
-    pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
-    rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
-    st.markdown(f"""
-    <div style="background:#0d1628;border:1px solid rgba(99,130,255,.15);border-radius:12px;padding:18px;text-align:center">
-      <div style="font-size:10px;color:#4a5a7a;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">80/20 Rule</div>
-      <div style="font-size:36px;font-weight:700;background:linear-gradient(90deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{pareto_pct:.0f}%</div>
-      <div style="font-size:11px;color:#8899bb;margin-top:4px">of products drive</div>
-      <div style="font-size:22px;font-weight:700;color:#10b981;margin:6px 0">80%</div>
-      <div style="font-size:11px;color:#8899bb">of revenue</div>
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(99,130,255,.1)">
-        <div class="stat-row"><span class="stat-label">Key SKUs</span><span class="stat-value">{cutoff_products}</span></div>
-        <div class="stat-row"><span class="stat-label">Their revenue</span><span class="stat-value">{fmt(rev_80)}</span></div>
-        <div class="stat-row"><span class="stat-label">Total SKUs</span><span class="stat-value">{len(prod_rev_sorted)}</span></div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+    if stats_data:
+        sd = stats_data
+        st.markdown('<div class="section-head">STATISTICAL ANALYSIS</div>', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown('<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">📊 Descriptive Statistics</div>', unsafe_allow_html=True)
+            for label, val in [
+                ("Mean Revenue",   fmt(sd["mean"])), ("Median Revenue", fmt(sd["median"])),
+                ("Std Deviation",  fmt(sd["std"])),  ("Skewness",       f"{sd['skewness']:.3f}"),
+                ("Kurtosis",       f"{sd['kurtosis']:.3f}"), ("Normality p", f"{sd['p_norm']:.4f}"),
+            ]:
+                st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
+            normal_txt = "✓ Normally distributed" if sd["is_normal"] else "⚠ Not normally distributed"
+            normal_clr = "#16A34A" if sd["is_normal"] else "#D97706"
+            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{normal_clr};background:rgba(15,23,42,.06);padding:7px 10px;border-radius:7px">{normal_txt}</div></div>', unsafe_allow_html=True)
+        with c2:
+            outliers = sd["outliers"]
+            st.markdown(f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">⚠ Outlier Detection ({len(outliers)} outliers)</div>', unsafe_allow_html=True)
+            if len(outliers) > 0:
+                for _, row in outliers.head(6).iterrows():
+                    st.markdown(f'<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:7px;padding:8px 10px;margin-bottom:5px"><div style="font-size:11px;font-weight:600;color:#0F172A">{row["Product Name"]}</div><div style="font-size:9px;color:#475569">{row["City"]} · {row["Category"]}</div><div style="display:flex;justify-content:space-between;margin-top:3px"><span style="font-size:10px;color:#1D4DFF">{fmt(row["Total Revenue"])}</span><span style="font-size:10px;color:#DC2626;font-family:monospace">Z={row["Z-Score"]}</span></div></div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div style="font-size:11px;color:#64748B;text-align:center;padding:20px">No significant outliers</div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+        with c3:
+            r_disc, p_disc = sd["r_disc"], sd["p_disc"]
+            r_rev,  p_rev  = sd["r_rev"],  sd["p_rev"]
+            st.markdown('<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">🔗 Correlation Analysis</div>', unsafe_allow_html=True)
+            for label, val in [
+                ("Discount → Orders (r)", f"{r_disc:.3f}"), ("Discount → Orders (p)", f"{p_disc:.4f}"),
+                ("Revenue → Profit (r)",  f"{r_rev:.3f}"),  ("Revenue → Profit (p)",  f"{p_rev:.4f}"),
+            ]:
+                st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
+            for pair, r, p in [("Discount ↔ Orders", r_disc, p_disc), ("Revenue ↔ Profit", r_rev, p_rev)]:
+                sig = p < 0.05; direction = "positive" if r > 0 else "negative"
+                txt = f"{'Strong' if abs(r) > 0.5 else 'Weak'} {direction} — {'significant ✓' if sig else 'not significant'}"
+                clr = "#16A34A" if sig else "#D97706"
+                st.markdown(f'<div style="background:rgba(99,102,241,.07);border-radius:6px;padding:7px 10px;margin-top:6px"><div style="font-size:10px;font-weight:600;color:#1D4DFF">{pair}</div><div style="font-size:10px;color:{clr};margin-top:2px">{txt}</div></div>', unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════════════════════════
-# ── DEEP ANALYTICS 2: SIMULATED CATEGORY TREND
-# ══════════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="section-head">📈 CATEGORY REVENUE TREND — SIMULATED WEEKLY</div>', unsafe_allow_html=True)
-np.random.seed(7)
-trend_weeks   = [f"W{i}" for i in range(1, 9)]
-categories_present = df["Category"].unique().tolist()
-cat_base_rev  = df.groupby("Category")["Total Revenue"].mean()
-
-fig = go.Figure()
-for cat in categories_present:
-    base  = cat_base_rev.get(cat, 1000)
-    noise = np.random.normal(0, base * 0.08, 8)
-    trend = np.linspace(base * 0.85, base * 1.15, 8) + noise
-    trend = np.clip(trend, 0, None)
-    clr   = CAT_CLR.get(cat, "#6366f1")
-    fig.add_trace(go.Scatter(
-        x=trend_weeks, y=trend, name=cat, mode="lines+markers",
-        line=dict(color=clr, width=2),
-        marker=dict(size=6, color=clr),
-        fill="tozeroy", fillcolor=_hex_to_rgba(clr, 0.03),
-    ))
-
-fig.update_layout(
-    **PLOTLY_BASE,
-    title=dict(text="Simulated 8-Week Category Revenue Trend (based on current distribution)",
-               font=dict(color="#f0f4ff", size=12)),
-    height=300,
-    yaxis=dict(tickprefix="₹", title="Avg Revenue", **_AXIS_DEFAULTS),
-    hovermode="x unified",
-)
-st.plotly_chart(fig, use_container_width=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════════════════════════
-# ── DEEP ANALYTICS 3: CITY RADAR CHART
-# ══════════════════════════════════════════════════════════════════════════════════
-st.markdown('<div class="section-head">🕸️ CITY COMPETITIVE RADAR — MULTI-KPI</div>', unsafe_allow_html=True)
-
-radar_metrics = ["Revenue", "Orders", "Avg Price", "Discount%", "Profit Margin"]
-cities_present = df["City"].unique().tolist()
-
-city_radar_data = {}
-for city in cities_present:
-    cdf = df[df["City"] == city]
-    city_radar_data[city] = {
-        "Revenue":       cdf["Total Revenue"].sum(),
-        "Orders":        cdf["Orders"].sum(),
-        "Avg Price":     cdf["Current Price"].mean(),
-        "Discount%":     cdf["Discount"].mean(),
-        "Profit Margin": cdf["Profit Margin"].mean() if "Profit Margin" in cdf.columns else 0,
-    }
-
-radar_df = pd.DataFrame(city_radar_data).T
-# Normalize 0–1 per metric for radar (avoid scale dominance)
-radar_norm = radar_df.copy()
-for col in radar_norm.columns:
-    col_range = radar_norm[col].max() - radar_norm[col].min()
-    if col_range > 0:
-        radar_norm[col] = (radar_norm[col] - radar_norm[col].min()) / col_range
+        fig = px.imshow(sd["corr_matrix"], text_auto=True,
+                        color_continuous_scale=["#DC2626","#F8FAFC","#1D4DFF"],
+                        zmin=-1, zmax=1, title="Full Correlation Matrix")
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", height=350)
+        st.plotly_chart(fig, use_container_width=True)
     else:
-        radar_norm[col] = 0.5
+        st.info("Enable 'Show Statistical Analysis' in the sidebar (needs ≥5 rows in the current filter).")
 
-col1, col2 = st.columns([2, 1])
-with col1:
-    fig = go.Figure()
-    for i, city in enumerate(cities_present):
-        vals = radar_norm.loc[city].tolist()
-        vals += [vals[0]]   # close the polygon
-        cats  = radar_metrics + [radar_metrics[0]]
-        clr   = CITY_CLR.get(city, PAL[i % len(PAL)])
-        fig.add_trace(go.Scatterpolar(
-            r=vals, theta=cats, name=city,
-            fill="toself", fillcolor=_hex_to_rgba(clr, 0.08),
-            line=dict(color=clr, width=2),
-            marker=dict(size=5),
-        ))
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            radialaxis=dict(visible=True, range=[0,1], gridcolor="rgba(99,130,255,.1)", tickfont=dict(size=8, color="#4a5a7a")),
-            angularaxis=dict(gridcolor="rgba(99,130,255,.1)", tickfont=dict(size=10, color="#8899bb")),
-        ),
-        font=dict(family="Inter", color="#8899bb", size=11),
-        title=dict(text="City Competitive Radar (normalized per KPI)", font=dict(color="#f0f4ff", size=12)),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
-        margin=dict(l=30, r=30, t=50, b=30),
-        height=360,
-    )
-    st.plotly_chart(fig, use_container_width=True)
-with col2:
-    # City scorecard — rank each city by composite score
-    radar_norm["Score"] = radar_norm.mean(axis=1) * 100
-    ranked = radar_norm[["Score"]].sort_values("Score", ascending=False)
-    st.markdown("""
-    <div style="background:#0d1628;border:1px solid rgba(99,130,255,.15);border-radius:12px;padding:16px">
-      <div style="font-size:10px;font-weight:600;color:#a5b4fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">
-        🏆 Composite City Score
-      </div>
-    """, unsafe_allow_html=True)
-    medals_r = ["🥇","🥈","🥉"] + ["▫️"]*(len(ranked)-3)
-    for i, (city, row) in enumerate(ranked.iterrows()):
-        score = row["Score"]
-        bar_w = int(score)
-        clr   = CITY_CLR.get(city, PAL[i % len(PAL)])
+    st.markdown('<div class="section-head">SALES FORECASTING — LINEAR REGRESSION</div>', unsafe_allow_html=True)
+    if forecast:
+        fc = forecast
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["upper"], fill=None, mode="lines", line=dict(width=0), showlegend=False))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["lower"], fill="tonexty", mode="lines", line=dict(width=0), fillcolor="rgba(99,102,241,.08)", name="95% CI"))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["actual_vals"], mode="lines+markers", name="Actual", line=dict(color="#6366f1", width=2), marker=dict(size=4)))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["trend_vals"], mode="lines", name="Trend", line=dict(color="#06b6d4", width=2, dash="dash")))
+            fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
+            fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#0F172A", height=280)
+            fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+            st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            growth_clr = "#16A34A" if fc["growth_pct"] >= 0 else "#DC2626"
+            st.markdown(f"""
+            <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:20px">
+              <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Forecast Value</div>
+              <div style="font-size:28px;font-weight:700;font-family:monospace;background:linear-gradient(90deg,#1D4DFF,#1D4DFF);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{fmt(fc['next_val'])}</div>
+              <div style="display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;margin:8px 0;background:{'rgba(16,185,129,.12)' if fc['growth_pct']>=0 else 'rgba(239,68,68,.12)'};color:{growth_clr}">
+                {'↑' if fc['growth_pct']>=0 else '↓'} {abs(fc['growth_pct']):.1f}% vs avg
+              </div>
+            """, unsafe_allow_html=True)
+            for label, val in [("R² Score", f"{fc['r2']:.4f}"), ("Slope β₁", f"{fc['slope']:.3f}"), ("CI Band", fmt(fc["ci"]))]:
+                st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
+            quality = "✓ Good fit" if fc["r2"] > 0.6 else "⚠ Low R² — noisy data"
+            q_clr   = "#16A34A" if fc["r2"] > 0.6 else "#D97706"
+            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{q_clr};background:rgba(15,23,42,.06);padding:7px 10px;border-radius:7px">{quality}</div></div>', unsafe_allow_html=True)
+    else:
+        st.info("Need at least 5 distinct products in the current filter to fit a forecast.")
+
+    st.markdown('<div class="section-head">PARETO ANALYSIS — 80/20 REVENUE RULE</div>', unsafe_allow_html=True)
+    prod_rev_sorted = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
+    cumulative_pct  = (prod_rev_sorted.cumsum() / prod_rev_sorted.sum() * 100).values
+    pareto_x        = list(range(1, len(prod_rev_sorted) + 1))
+    cutoff_idx      = next((i for i, v in enumerate(cumulative_pct) if v >= 80), len(pareto_x)-1)
+    cutoff_products = cutoff_idx + 1
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=prod_rev_sorted.index.tolist(), y=prod_rev_sorted.values,
+            name="Revenue", marker_color="#6366f1", marker_line_width=0, opacity=0.75, yaxis="y"))
+        fig.add_trace(go.Scatter(x=prod_rev_sorted.index.tolist(), y=cumulative_pct,
+            name="Cumulative %", mode="lines+markers", line=dict(color="#06b6d4", width=2), marker=dict(size=5), yaxis="y2"))
+        fig.add_hline(y=80, line_dash="dash", line_color="#f59e0b",
+                      annotation_text="80% Revenue Threshold", annotation_font_color="#f59e0b", annotation_position="top right")
+        fig.add_vrect(x0=-0.5, x1=cutoff_idx + 0.5, fillcolor="rgba(99,102,241,.06)", line_width=0,
+            annotation_text=f"Top {cutoff_products} products", annotation_position="top left", annotation_font_color="#1D4DFF")
+        fig.update_layout(**PLOTLY_BASE,
+            title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue", font=dict(color="#0F172A", size=12)),
+            height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(15,23,42,.06)"),
+            yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0,105], ticksuffix="%", showgrid=False),
+            legend=dict(orientation="h", y=1.1))
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
+        rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
         st.markdown(f"""
-        <div style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:11px;color:#f0f4ff">{medals_r[i]} {city}</span>
-            <span style="font-size:10px;font-weight:600;color:{clr};font-family:monospace">{score:.0f}/100</span>
-          </div>
-          <div style="background:rgba(99,130,255,.08);border-radius:4px;height:5px">
-            <div style="width:{bar_w}%;background:{clr};height:5px;border-radius:4px;transition:width .3s"></div>
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:18px;text-align:center">
+          <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">80/20 Rule</div>
+          <div style="font-size:36px;font-weight:700;background:linear-gradient(90deg,#1D4DFF,#1D4DFF);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{pareto_pct:.0f}%</div>
+          <div style="font-size:11px;color:#475569;margin-top:4px">of products drive</div>
+          <div style="font-size:22px;font-weight:700;color:#10b981;margin:6px 0">80%</div>
+          <div style="font-size:11px;color:#475569">of revenue</div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(15,23,42,.08)">
+            <div class="stat-row"><span class="stat-label">Key SKUs</span><span class="stat-value">{cutoff_products}</span></div>
+            <div class="stat-row"><span class="stat-label">Their revenue</span><span class="stat-value">{fmt(rev_80)}</span></div>
+            <div class="stat-row"><span class="stat-label">Total SKUs</span><span class="stat-value">{len(prod_rev_sorted)}</span></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 3 — DELIVERY ANALYTICS
 # ══════════════════════════════════════════════════════════════════════════════════
-# ── BLINKBOT CHATBOT UI  (Phase 4 — LLM streaming + chart-backed)
-# ══════════════════════════════════════════════════════════════════════════════════
 
-st.markdown('<div class="section-head">🤖 BLINKBOT — AI BUSINESS ANALYST</div>', unsafe_allow_html=True)
+def render_delivery_analytics():
+    page_header("Delivery Analytics", "On-Time Performance · Speed · Order Quality")
 
-# ── Pre-compute ctx once for chart detection ──────────────────────────────────────
-_bb_ctx_live = _bb_context(df)
-
-# ── Load current memory for UI display ───────────────────────────────────────────
-_ui_mem = _get_memory()
-
-# ── Mode badge ───────────────────────────────────────────────────────────────────
-mode_badge = (
-    '<span style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);'
-    'border-radius:20px;padding:3px 10px;font-size:10px;color:#34d399;margin-left:8px">✨ Claude AI Analyst</span>'
-    if (use_ai_mode and api_key) else
-    '<span style="background:rgba(99,130,255,.08);border:1px solid rgba(99,130,255,.15);'
-    'border-radius:20px;padding:3px 10px;font-size:10px;color:#4a5a7a;margin-left:8px">🔧 Rule-based</span>'
-)
-
-# ── Header row: bot identity + live memory panel ──────────────────────────────────
-bb_head_col, bb_mem_col = st.columns([3, 2])
-
-with bb_head_col:
-    st.markdown(f"""
-    <div class="blinkbot-header">
-      <div style="width:42px;height:42px;background:linear-gradient(135deg,#6366f1,#06b6d4);border-radius:12px;
-                  display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#f0f4ff">BlinkBot {mode_badge}</div>
-        <div style="font-size:11px;color:#a5b4fc">Senior AI Business Analyst • Always Online</div>
-      </div>
-      <div style="margin-left:auto;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
-                  border-radius:20px;padding:4px 10px;font-size:10px;color:#34d399">● Live</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with bb_mem_col:
-    mem_items = [
-        ("💬 Turns",         str(_ui_mem.turn_count)),
-        ("🧠 Last Topic",    _ui_mem.last_intent    or "—"),
-        ("📍 Last City",     _ui_mem.last_city       or "—"),
-        ("⭐ Last Product",  _ui_mem.last_product    or "—"),
-        ("🏷️ Last Category", _ui_mem.last_category  or "—"),
-    ]
-    rows_html = "".join([
-        f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
-        f'border-bottom:1px solid rgba(99,130,255,.06)">'
-        f'<span style="font-size:10px;color:#4a5a7a">{lbl}</span>'
-        f'<span style="font-size:10px;font-weight:600;color:#67e8f9;font-family:monospace">{val}</span>'
-        f'</div>'
-        for lbl, val in mem_items
-    ])
-    topic_stack = " → ".join(_ui_mem.intent_stack) if _ui_mem.intent_stack else "—"
-    st.markdown(f"""
-    <div style="background:#0d1628;border:1px solid rgba(99,130,255,.15);border-radius:12px;padding:14px 16px;">
-      <div style="font-size:10px;font-weight:600;color:#a5b4fc;text-transform:uppercase;
-                  letter-spacing:.08em;margin-bottom:8px">🧠 Conversation Memory</div>
-      {rows_html}
-      <div style="margin-top:8px;padding:6px 8px;background:rgba(99,102,241,.07);border-radius:6px;">
-        <div style="font-size:9px;color:#4a5a7a;margin-bottom:2px">TOPIC TRAIL</div>
-        <div style="font-size:10px;color:#a5b4fc">{topic_stack}</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── Session state initialisation ──────────────────────────────────────────────────
-if "blinkbot_history" not in st.session_state:
-    welcome = (
-        f"👋 **Hi! I'm BlinkBot** — now powered by **Claude** (Anthropic ✨).\n\n"
-        f"I've analyzed **{len(df):,} records** and I have full conversational memory. "
-        f"Ask me anything in plain English — I'll answer with data, a chart, and a recommendation.\n\n"
-        f"Try: *'Give me a full summary'* · *'Which city should we focus on?'* · *'Why is Grocery underperforming?'*"
-        if (use_ai_mode and api_key) else
-        f"👋 **Hi! I'm BlinkBot** — your AI Business Analyst with memory.\n\n"
-        f"I've analyzed **{len(df):,} records**. Every answer comes with an inline chart.\n\n"
-        f"💡 *Enable **LLM Mode** → paste your **Claude API key** from console.anthropic.com*\n\n"
-        f"Try: *'Give me a summary'* · *'Which city is worst?'* · *'Best product?'*"
-    )
-    st.session_state.blinkbot_history  = [{"role":"bot","msg":welcome,"fig_json":None}]
-
-# LLM message history — already in Claude's native {"role": "user"/"assistant", "content": str} format
-if "bb_messages_llm" not in st.session_state:
-    st.session_state.bb_messages_llm = []
-
-# ── Render chat history ───────────────────────────────────────────────────────────
-for msg in st.session_state.blinkbot_history:
-    css_class = "chat-message-bot" if msg["role"] == "bot" else "chat-message-user"
-    prefix    = "" if msg["role"] == "bot" else "💬 "
-    st.markdown(f'<div class="{css_class}">{prefix}{msg["msg"]}</div>', unsafe_allow_html=True)
-    if msg["role"] == "bot" and msg.get("fig_json"):
-        restored = _fig_from_json(msg["fig_json"])
-        if restored:
-            st.plotly_chart(restored, use_container_width=True, key=f"bb_fig_{id(msg)}")
-
-# ── Dynamic quick-question buttons ───────────────────────────────────────────────
-st.markdown("**💡 Quick Questions:**")
-QUICK_BASE = [
-    ("📊 Summary",       "Give me a full business summary"),
-    ("🏆 Best Product",  "Which product is performing best?"),
-    ("📍 City Analysis", "Which city is performing worst?"),
-    ("⚡ Influencers",   "How is influencer marketing performing?"),
-]
-QUICK_FOLLOWUP: list[tuple[str, str]] = []
-if _ui_mem.last_intent == "city" and _ui_mem.last_city:
-    QUICK_FOLLOWUP.append(("⚖️ Compare Cities",   "Compare best vs worst city"))
-if _ui_mem.last_intent in ("revenue","summary") and _ui_mem.last_category:
-    QUICK_FOLLOWUP.append(("🏷️ Category Drill",   f"Tell me more about {_ui_mem.last_category}"))
-if _ui_mem.last_product:
-    QUICK_FOLLOWUP.append(("📦 Reorder Risk",      f"Inventory risk for {_ui_mem.last_product}"))
-if _ui_mem.turn_count > 0:
-    QUICK_FOLLOWUP.append(("🔄 Tell Me More",      "Tell me more"))
-
-display_items = (QUICK_FOLLOWUP + QUICK_BASE)[:4]
-quick_cols    = st.columns(len(display_items))
-clicked_quick = None
-for i, (btn_label, q_text) in enumerate(display_items):
-    with quick_cols[i]:
-        if st.button(btn_label, key=f"bb_q{i}", use_container_width=True):
-            clicked_quick = q_text
-
-# ── Text input ────────────────────────────────────────────────────────────────────
-with st.form(key="bb_main_form", clear_on_submit=True):
-    fc1, fc2 = st.columns([5, 1])
-    with fc1:
-        ph = (
-            f"Ask anything — I'll answer with data and a chart..."
-            if (use_ai_mode and api_key)
-            else f"e.g. What is my total profit? Which city is weakest?"
+    if _present_delivery_cols:
+        narrative(
+            f"Your file includes real delivery fields: {', '.join(f'<b>{c}</b>' for c in _present_delivery_cols)}. "
+            f"Charts below that depend on these use your actual data; anything else falls back to the "
+            f"simulated delivery model (labelled clearly)."
         )
-        user_input = st.text_input("Ask BlinkBot...", placeholder=ph, label_visibility="collapsed")
-    with fc2:
-        submitted = st.form_submit_button("Ask 🤖", use_container_width=True)
+    else:
+        missing_data_notice(OPTIONAL_DELIVERY_COLS, "Delivery Analytics")
+        narrative(
+            "No raw delivery-timing columns were found, so KPIs and charts below use a <b>simulated delivery "
+            "time model</b> (calibrated to a 10-minute promise) so the page still demonstrates the analytics "
+            "NovaMS would run once real rider/order-timing data is connected."
+        )
 
-# ── Route & respond ───────────────────────────────────────────────────────────────
-question_to_answer = None
-if submitted and user_input.strip():
-    question_to_answer = user_input.strip()
-elif clicked_quick:
-    question_to_answer = clicked_quick
+    dl = delivery
+    st.markdown('<div class="section-head">DELIVERY PERFORMANCE</div>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number", value=dl["otd_pct"],
+            title={"text":"On-Time Delivery %","font":{"color":"#475569","size":13}},
+            number={"suffix":"%","font":{"color":dl["status_color"],"size":28}},
+            gauge={"axis":{"range":[0,100],"tickcolor":"#64748B"},
+                   "bar":{"color":dl["status_color"]}, "bgcolor":"#F8FAFC",
+                   "steps":[{"range":[0,85],"color":"rgba(239,68,68,.15)"},
+                             {"range":[85,95],"color":"rgba(245,158,11,.15)"},
+                             {"range":[95,100],"color":"rgba(16,185,129,.15)"}],
+                   "threshold":{"line":{"color":"#fff","width":2},"thickness":0.75,"value":95}},
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220, margin=dict(l=20,r=20,t=40,b=10))
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown(f'<div style="text-align:center;font-size:12px;font-weight:600;color:{dl["status_color"]}">{dl["status"]}</div>', unsafe_allow_html=True)
+    with col2:
+        fig = go.Figure(go.Bar(
+            x=[dl["p50"],dl["avg"],dl["p90"],dl["promise"]],
+            y=["P50","Avg","P90","Promise"], orientation="h",
+            marker_color=["#10b981","#6366f1","#ef4444","#f59e0b"], marker_line_width=0,
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220,
+                          title=dict(text="Delivery Time (minutes)", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=40,t=40,b=10),
+                          xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
+                          yaxis=dict(gridcolor="rgba(0,0,0,0)"))
+        st.plotly_chart(fig, use_container_width=True)
+    with col3:
+        bar_colors = ["#ef4444" if x > dl["promise"]+2 else "#10b981" for x in dl["hist_centers"]]
+        fig = go.Figure(go.Bar(x=dl["hist_centers"], y=dl["hist_counts"], marker_color=bar_colors, marker_line_width=0))
+        fig.add_vline(x=dl["promise"], line_dash="dash", line_color="#f59e0b",
+                      annotation_text="10-min promise", annotation_font_color="#f59e0b")
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220,
+                          title=dict(text="Order Distribution by Time", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=40,b=10),
+                          xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
+                          yaxis=dict(gridcolor="rgba(99,130,255,.05)"))
+        st.plotly_chart(fig, use_container_width=True)
 
-if question_to_answer:
-    # 1. Log user turn
-    st.session_state.blinkbot_history.append({"role":"user","msg":question_to_answer,"fig_json":None})
-    st.session_state.bb_messages_llm.append({"role":"user","content":question_to_answer})
+    st.markdown('<div class="section-head">ORDER QUALITY — DEFECT RATE</div>', unsafe_allow_html=True)
+    df_d = defects
+    col1, col2 = st.columns(2)
+    with col1:
+        fig = go.Figure(go.Funnel(
+            y=df_d["funnel_labels"], x=df_d["funnel_y"], textinfo="value+percent initial",
+            marker=dict(color=["#6366f1","#8b5cf6","#f59e0b","#ef4444","#10b981"]),
+            connector=dict(line=dict(color="#CBD5E1", width=1)),
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=300,
+                          title=dict(text=f"Order Quality Funnel | ODR: {df_d['odr_pct']:.1f}%", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10))
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = go.Figure(go.Bar(
+            x=["Expired/Damaged","Missing Items","Cancelled (OOS)"],
+            y=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
+            marker_color=["#ef4444","#f59e0b","#8b5cf6"], marker_line_width=0,
+            text=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
+            textposition="outside", textfont=dict(color="#0F172A"),
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=300,
+                          title=dict(text="Defect Breakdown by Category", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10),
+                          yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
+        st.plotly_chart(fig, use_container_width=True)
 
-    # 2. Pick chart regardless of mode
-    response_fig     = _detect_chart_for_question(question_to_answer, _bb_ctx_live, df)
-    response_fig_json = _fig_to_json(response_fig)
+    st.markdown('<div class="section-head">DETAILED DELIVERY TABLE</div>', unsafe_allow_html=True)
+    if _present_delivery_cols:
+        show_cols = [c for c in OPTIONAL_DELIVERY_COLS if c in df.columns]
+        st.dataframe(df[show_cols], use_container_width=True, height=320)
+    else:
+        st.markdown("""
+        <div class="missing-box">
+          📋 A per-order delivery table (Order ID, Delivery Partner, Pickup/Packing/Waiting Time, Distance,
+          Delivery Cost, Delay Reason, SLA Target/Achieved, Customer Rating) will appear here automatically
+          once your uploaded file includes any of those columns. No fabricated rows are shown.
+        </div>
+        """, unsafe_allow_html=True)
 
-    # ── LLM streaming mode ────────────────────────────────────────────────────────
-    if use_ai_mode and api_key:
-        system_prompt = _build_llm_system_prompt(df, kpis)
 
-        # Sanitise history before sending — enforces alternation, removes errors
-        clean_messages = _sanitise_messages(st.session_state.bb_messages_llm)
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 4 — INVENTORY INTELLIGENCE
+# ══════════════════════════════════════════════════════════════════════════════════
 
-        # Show user bubble immediately, then stream bot response in-place
-        st.markdown(f'<div class="chat-message-user">💬 {question_to_answer}</div>', unsafe_allow_html=True)
+def render_inventory_intelligence():
+    page_header("Inventory Intelligence", "Stock Risk · Reorder Alerts · Fast/Slow Movers")
 
-        # Streaming placeholder
-        stream_placeholder = st.empty()
-        full_response      = ""
-        error_occurred     = False
+    narrative(
+        f"<b>What's happening:</b> stock-cover is simulated from each product's order velocity "
+        f"(no live warehouse feed is connected yet). <b>Why it matters:</b> "
+        f"{(inventory['Risk'].str.contains('CRITICAL')).sum()} of your top {len(inventory)} SKUs are at "
+        f"critical cover. <b>What to do:</b> action the reorder list below before those SKUs go out of stock."
+    )
 
-        for chunk in _call_claude_stream(clean_messages, system_prompt, api_key):
-            full_response += chunk
-            if "⚠️" in chunk:
-                error_occurred = True
-            stream_placeholder.markdown(
-                f'<div class="chat-message-bot">{full_response}▊</div>',
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.markdown('<div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">⚡ Top 10 High-Risk Inventory Items</div>', unsafe_allow_html=True)
+        for _, row in inventory.iterrows():
+            st.markdown(
+                f'<div style="background:{row["_bg"]};border:1px solid {row["_border"]};border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">'
+                f'<div><div style="font-size:12px;font-weight:600;color:#0F172A">{row["Product"]}</div>'
+                f'<div style="font-size:10px;color:#475569;margin-top:2px">Stock: {row["Stock_Left"]} · Daily: {row["Daily_Sales"]} · Covers: {row["Days_Cover"]} days</div></div>'
+                f'<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:{row["_color"]}">{row["Risk"]}</div>'
+                f'<div style="font-size:10px;color:{row["_color"]};margin-top:2px">{row["Action"]}</div></div></div>',
                 unsafe_allow_html=True,
             )
+    with col2:
+        critical_count = inventory["Risk"].str.contains("CRITICAL").sum()
+        low_count      = inventory["Risk"].str.contains("LOW").sum()
+        ok_count       = inventory["Risk"].str.contains("OK").sum()
+        fig = go.Figure(go.Pie(
+            labels=["Critical 🔴","Low Stock 🟡","OK 🟢"], values=[critical_count, low_count, ok_count],
+            hole=0.65, marker=dict(colors=["#ef4444","#f59e0b","#10b981"]), textinfo="label+value", textfont=dict(size=11),
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
+                          title=dict(text="Stock Risk Distribution", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)))
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown(f'<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:700;color:#ef4444">{critical_count}</div><div style="font-size:10px;color:#475569">Products need immediate reorder</div></div>', unsafe_allow_html=True)
 
-        # Finalise — remove cursor
-        stream_placeholder.markdown(
-            f'<div class="chat-message-bot">{full_response}</div>',
+    st.markdown('<div class="section-head">FAST vs SLOW MOVERS</div>', unsafe_allow_html=True)
+    prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
+    col1, col2 = st.columns(2)
+    with col1:
+        fast = prod_velocity.head(8)
+        fig = go.Figure(go.Bar(x=fast.values, y=fast.index.tolist(), orientation="h",
+            marker_color="#10b981", marker_line_width=0, text=fast.values, textposition="outside"))
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟢 Fast-Moving Products (by Orders)", font=dict(color="#0F172A", size=13)),
+                          height=280, yaxis=dict(autorange="reversed", gridcolor="rgba(0,0,0,0)"), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        slow = prod_velocity.tail(8).sort_values()
+        fig = go.Figure(go.Bar(x=slow.values, y=slow.index.tolist(), orientation="h",
+            marker_color="#f59e0b", marker_line_width=0, text=slow.values, textposition="outside"))
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟡 Slow-Moving Products (by Orders)", font=dict(color="#0F172A", size=13)),
+                          height=280, yaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">INVENTORY SUMMARY</div>', unsafe_allow_html=True)
+    i1, i2, i3, i4 = st.columns(4)
+    for col, icon, label, val in [
+        (i1,"📦","Total Products", f"{df['Product Name'].nunique():,}"),
+        (i2,"🔴","Critical (Top 10)", f"{critical_count}"),
+        (i3,"🟡","Low Stock (Top 10)", f"{low_count}"),
+        (i4,"🟢","Healthy (Top 10)", f"{ok_count}"),
+    ]:
+        with col:
+            kpi_card(label, val)
+    st.caption("Stock levels and days-of-cover are simulated from order velocity — connect a warehouse/stock feed for live figures.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 5 — OPERATIONS
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def render_operations():
+    page_header("Operations", "Order Processing · Store Performance · Bottlenecks")
+
+    if _present_operations_cols:
+        narrative(f"Operational columns found in your data: {', '.join(f'<b>{c}</b>' for c in _present_operations_cols)}.")
+    else:
+        missing_data_notice(OPTIONAL_OPERATIONS_COLS, "Operations")
+
+    st.markdown('<div class="section-head">ORDER VOLUME BY CITY (STORE PROXY)</div>', unsafe_allow_html=True)
+    st.caption("Your dataset doesn't include a dedicated store/warehouse ID, so city is used as the closest available proxy for a fulfillment location.")
+    city_ops = df.groupby("City").agg(Orders=("Orders","sum"), Revenue=("Total Revenue","sum")).sort_values("Orders", ascending=False).reset_index()
+    fig = px.bar(city_ops, x="City", y="Orders", color="City", color_discrete_map=CITY_CLR,
+                 title="Order Volume by City", labels={"Orders":"Total Orders"})
+    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+    fig.update_traces(marker_line_width=0, opacity=0.85)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">PROCESSING TIME BREAKDOWN</div>', unsafe_allow_html=True)
+    if _present_operations_cols:
+        for col in _present_operations_cols:
+            if pd.api.types.is_numeric_dtype(df[col]):
+                fig = px.histogram(df, x=col, nbins=20, title=f"Distribution of {col}", color_discrete_sequence=["#6366f1"])
+                fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", height=260)
+                st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.markdown("""
+        <div class="missing-box">
+          ⚙️ Order processing time, picking time, and packing time are not present in your current dataset,
+          so this section can't compute real operational-bottleneck charts. Upload a file with those columns
+          (or an <code>Order ID</code> + timestamp trail) to unlock this analysis — nothing is being simulated
+          here to avoid misleading operational decisions.
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="section-head">OPERATIONAL SUMMARY</div>', unsafe_allow_html=True)
+    o1, o2, o3 = st.columns(3)
+    for col, icon, label, val in [
+        (o1,"🏙️","Active Locations (Cities)", f"{df['City'].nunique()}"),
+        (o2,"🧾","Order Lines Processed", f"{len(df):,}"),
+        (o3,"📦","SKUs in Circulation", f"{df['Product Name'].nunique()}"),
+    ]:
+        with col:
+            kpi_card(label, val)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 6 — CUSTOMER ANALYTICS
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def render_customer_analytics():
+    page_header("Customer Analytics", "New vs Repeat · Retention · Ratings · Segments")
+
+    st.caption("Your dataset doesn't include a customer ID, so new-vs-repeat and cohort retention below use an illustrative weekly model — clearly separated from your real revenue/order figures elsewhere in NovaMS.")
+
+    st.markdown('<div class="section-head">CUSTOMER RETENTION — NEW vs REPEAT</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        weeks    = ["Week 1","Week 2","Week 3","Week 4","Week 5","Week 6"]
+        new_c    = [1200,980,1100,870,1050,920]
+        repeat_c = [800,920,1050,1100,1200,1280]
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name="New Customers",    x=weeks, y=new_c,    marker_color="#6366f1", marker_line_width=0))
+        fig.add_trace(go.Bar(name="Repeat Customers", x=weeks, y=repeat_c, marker_color="#10b981", marker_line_width=0))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
+                          barmode="group", title=dict(text="New vs Repeat Customers (Weekly, illustrative)", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)),
+                          yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        retention_matrix = [[100,68,52,41],[100,71,55,43],[100,65,48,38],[100,73,58,46]]
+        fig = go.Figure(go.Heatmap(
+            z=retention_matrix, x=["W+0","W+1","W+2","W+3"], y=["Week 1","Week 2","Week 3","Week 4"],
+            colorscale=[[0,"#EEF2FF"],[0.4,"#C7D2FE"],[0.7,"#818CF8"],[1,"#1D4DFF"]],
+            text=[[f"{v}%" for v in row] for row in retention_matrix], texttemplate="%{text}",
+            hovertemplate="Cohort: %{y}<br>Week: %{x}<br>Retention: %{text}<extra></extra>",
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
+                          title=dict(text="Cohort Retention Table (%, illustrative)", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10))
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">CITY COMPETITIVE RADAR — MULTI-KPI</div>', unsafe_allow_html=True)
+    radar_metrics = ["Revenue", "Orders", "Avg Price", "Discount%", "Profit Margin"]
+    cities_present = df["City"].unique().tolist()
+    city_radar_data = {}
+    for city in cities_present:
+        cdf = df[df["City"] == city]
+        city_radar_data[city] = {
+            "Revenue": cdf["Total Revenue"].sum(), "Orders": cdf["Orders"].sum(),
+            "Avg Price": cdf["Current Price"].mean(), "Discount%": cdf["Discount"].mean(),
+            "Profit Margin": cdf["Profit Margin"].mean() if "Profit Margin" in cdf.columns else 0,
+        }
+    radar_df = pd.DataFrame(city_radar_data).T
+    radar_norm = radar_df.copy()
+    for col in radar_norm.columns:
+        col_range = radar_norm[col].max() - radar_norm[col].min()
+        radar_norm[col] = (radar_norm[col] - radar_norm[col].min()) / col_range if col_range > 0 else 0.5
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        fig = go.Figure()
+        for i, city in enumerate(cities_present):
+            vals = radar_norm.loc[city].tolist(); vals += [vals[0]]
+            cats  = radar_metrics + [radar_metrics[0]]
+            clr   = CITY_CLR.get(city, PAL[i % len(PAL)])
+            fig.add_trace(go.Scatterpolar(r=vals, theta=cats, name=city, fill="toself",
+                fillcolor=_hex_to_rgba(clr, 0.08), line=dict(color=clr, width=2), marker=dict(size=5)))
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            polar=dict(bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(visible=True, range=[0,1], gridcolor="rgba(15,23,42,.08)", tickfont=dict(size=8, color="#64748B")),
+                angularaxis=dict(gridcolor="rgba(15,23,42,.08)", tickfont=dict(size=10, color="#475569"))),
+            font=dict(family="Inter", color="#475569", size=11),
+            title=dict(text="City Competitive Radar (normalized per KPI)", font=dict(color="#0F172A", size=12)),
+            legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+            margin=dict(l=30, r=30, t=50, b=30), height=360,
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        radar_norm["Score"] = radar_norm.mean(axis=1) * 100
+        ranked = radar_norm[["Score"]].sort_values("Score", ascending=False)
+        st.markdown("""
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px">
+          <div style="font-size:10px;font-weight:600;color:#1D4DFF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">
+            🏆 Composite City Score
+          </div>
+        """, unsafe_allow_html=True)
+        medals_r = ["🥇","🥈","🥉"] + ["▫️"]*(len(ranked)-3)
+        for i, (city, row) in enumerate(ranked.iterrows()):
+            score = row["Score"]; bar_w = int(score); clr = CITY_CLR.get(city, PAL[i % len(PAL)])
+            st.markdown(f"""
+            <div style="margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:11px;color:#0F172A">{medals_r[i]} {city}</span>
+                <span style="font-size:10px;font-weight:600;color:{clr};font-family:monospace">{score:.0f}/100</span>
+              </div>
+              <div style="background:rgba(99,130,255,.08);border-radius:4px;height:5px">
+                <div style="width:{bar_w}%;background:{clr};height:5px;border-radius:4px"></div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    if "Influencer Active" in df.columns:
+        st.markdown('<div class="section-head">INFLUENCER-DRIVEN CUSTOMER LIFT</div>', unsafe_allow_html=True)
+        st.plotly_chart(_chart_influencer_lift(_bb_context(df), df), use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 7 — FINANCE
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def render_finance():
+    page_header("Finance", "Unit Economics · Cost Structure · Profitability by Category & City")
+
+    ue = unit_econ
+    narrative(
+        f"<b>What's happening:</b> average order revenue is <b>{fmt(ue['avg_rev'])}</b> with a contribution "
+        f"margin of <b>{ue['cm_pct']:.1f}%</b> after COGS, rider pay, packaging, gateway fees and promos. "
+        f"<b>What to do:</b> COGS is the biggest lever — renegotiate supplier terms or shift mix toward "
+        f"higher-margin categories below."
+    )
+
+    st.markdown('<div class="section-head">UNIT ECONOMICS — CONTRIBUTION MARGIN</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        labels = ["Revenue","COGS","Rider Pay","Packaging","Gateway Fee","Promos","Net Profit"]
+        values = [ue["avg_rev"],-ue["cogs"],-ue["rider"],-ue["packaging"],-ue["gateway"],-ue["promos"],ue["net_profit"]]
+        fig = go.Figure(go.Waterfall(
+            name="Unit Economics", orientation="v",
+            measure=["absolute","relative","relative","relative","relative","relative","total"],
+            x=labels, y=values, text=[fmt(abs(v)) for v in values], textposition="outside",
+            connector={"line":{"color":"#94A3B8"}},
+            decreasing={"marker":{"color":"#ef4444"}}, increasing={"marker":{"color":"#10b981"}},
+            totals={"marker":{"color":"#6366f1"}},
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=320,
+                          title=dict(text=f"Revenue → Net Profit | CM: {ue['cm_pct']:.1f}%", font=dict(color="#0F172A",size=12)),
+                          margin=dict(l=10,r=10,t=50,b=10), yaxis=dict(gridcolor="rgba(99,130,255,.05)"), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        fig = go.Figure(go.Pie(
+            labels=["COGS (52%)","Rider Pay (12%)","Packaging (3%)","Gateway (2%)","Promos (5%)","Net Profit (26%)"],
+            values=[ue["cogs"],ue["rider"],ue["packaging"],ue["gateway"],ue["promos"],max(0,ue["net_profit"])],
+            hole=0.6, marker=dict(colors=["#6366f1","#06b6d4","#f59e0b","#8b5cf6","#ec4899","#10b981"]),
+            textinfo="label+percent", textfont=dict(size=10),
+        ))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=320,
+                          title=dict(text="Cost Structure Breakdown", font=dict(color="#0F172A",size=13)),
+                          margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=9)))
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">PROFITABILITY BY CATEGORY & CITY</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        cat_profit = df.groupby("Category").agg(Revenue=("Total Revenue","sum"), Profit=("Profit","sum")).reset_index()
+        cat_profit["Margin %"] = np.where(cat_profit["Revenue"]>0, cat_profit["Profit"]/cat_profit["Revenue"]*100, 0)
+        fig = go.Figure(go.Bar(
+            x=cat_profit["Category"], y=cat_profit["Margin %"],
+            marker_color=[CAT_CLR.get(c,"#6366f1") for c in cat_profit["Category"]], marker_line_width=0,
+            text=[f"{v:.1f}%" for v in cat_profit["Margin %"]], textposition="outside",
+        ))
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by Category", font=dict(color="#0F172A", size=13)),
+                          yaxis=dict(ticksuffix="%", gridcolor="rgba(15,23,42,.06)"), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        city_profit = df.groupby("City").agg(Revenue=("Total Revenue","sum"), Profit=("Profit","sum")).reset_index()
+        city_profit["Margin %"] = np.where(city_profit["Revenue"]>0, city_profit["Profit"]/city_profit["Revenue"]*100, 0)
+        fig = go.Figure(go.Bar(
+            x=city_profit["City"], y=city_profit["Margin %"],
+            marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_profit["City"]], marker_line_width=0,
+            text=[f"{v:.1f}%" for v in city_profit["Margin %"]], textposition="outside",
+        ))
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by City", font=dict(color="#0F172A", size=13)),
+                          yaxis=dict(ticksuffix="%", gridcolor="rgba(15,23,42,.06)"), showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">DELIVERY COST IMPACT</div>', unsafe_allow_html=True)
+    dcol1, dcol2, dcol3 = st.columns(3)
+    delivery_cost_per_order = ue["rider"] + ue["packaging"]
+    total_delivery_cost = delivery_cost_per_order * kpis["total_orders"]
+    for col, icon, label, val in [
+        (dcol1,"🚴","Delivery Cost / Order", fmt(delivery_cost_per_order)),
+        (dcol2,"📦","Total Delivery Cost",    fmt(total_delivery_cost)),
+        (dcol3,"📊","% of Revenue",           f"{(total_delivery_cost/kpis['total_rev']*100 if kpis['total_rev'] else 0):.1f}%"),
+    ]:
+        with col:
+            kpi_card(label, val)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 8 — AI ANALYST (BlinkBot)
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def render_ai_analyst():
+    page_header("AI Analyst — BlinkBot", "Ask about revenue, delivery, inventory, or customers in plain English")
+
+    _bb_ctx_live = _bb_context(df)
+    _ui_mem = _get_memory()
+
+    mode_badge = (
+        '<span style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);'
+        'border-radius:20px;padding:3px 10px;font-size:10px;color:#16A34A;margin-left:8px">✨ Claude AI Analyst</span>'
+        if (use_ai_mode and api_key) else
+        '<span style="background:rgba(99,130,255,.08);border:1px solid #E2E8F0;'
+        'border-radius:20px;padding:3px 10px;font-size:10px;color:#64748B;margin-left:8px">🔧 Rule-based</span>'
+    )
+
+    bb_head_col, bb_mem_col = st.columns([3, 2])
+    with bb_head_col:
+        st.markdown(f"""
+        <div class="blinkbot-header">
+          <div style="width:42px;height:42px;background:linear-gradient(135deg,#6366f1,#06b6d4);border-radius:12px;
+                      display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:#0F172A">BlinkBot {mode_badge}</div>
+            <div style="font-size:11px;color:#1D4DFF">Senior AI Business Analyst • Always Online</div>
+          </div>
+          <div style="margin-left:auto;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
+                      border-radius:20px;padding:4px 10px;font-size:10px;color:#16A34A">● Live</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with bb_mem_col:
+        mem_items = [
+            ("💬 Turns",         str(_ui_mem.turn_count)),
+            ("🧠 Last Topic",    _ui_mem.last_intent    or "—"),
+            ("📍 Last City",     _ui_mem.last_city       or "—"),
+            ("⭐ Last Product",  _ui_mem.last_product    or "—"),
+            ("🏷️ Last Category", _ui_mem.last_category  or "—"),
+        ]
+        rows_html = "".join([
+            f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
+            f'border-bottom:1px solid rgba(15,23,42,.06)">'
+            f'<span style="font-size:10px;color:#64748B">{lbl}</span>'
+            f'<span style="font-size:10px;font-weight:600;color:#1D4DFF;font-family:monospace">{val}</span>'
+            f'</div>' for lbl, val in mem_items
+        ])
+        topic_stack = " → ".join(_ui_mem.intent_stack) if _ui_mem.intent_stack else "—"
+        st.markdown(f"""
+        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:14px 16px;">
+          <div style="font-size:10px;font-weight:600;color:#1D4DFF;text-transform:uppercase;
+                      letter-spacing:.08em;margin-bottom:8px">🧠 Conversation Memory</div>
+          {rows_html}
+          <div style="margin-top:8px;padding:6px 8px;background:rgba(99,102,241,.07);border-radius:6px;">
+            <div style="font-size:9px;color:#64748B;margin-bottom:2px">TOPIC TRAIL</div>
+            <div style="font-size:10px;color:#1D4DFF">{topic_stack}</div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if "blinkbot_history" not in st.session_state:
+        welcome = (
+            f"👋 **Hi! I'm BlinkBot** — now powered by **Claude** (Anthropic ✨).\n\n"
+            f"I've analyzed **{len(df):,} records** and I have full conversational memory. "
+            f"Ask me anything in plain English — I'll answer with data, a chart, and a recommendation.\n\n"
+            f"Try: *'Give me a full summary'* · *'Which city should we focus on?'* · *'Why is Grocery underperforming?'*"
+            if (use_ai_mode and api_key) else
+            f"👋 **Hi! I'm BlinkBot** — your AI Business Analyst with memory.\n\n"
+            f"I've analyzed **{len(df):,} records**. Every answer comes with an inline chart.\n\n"
+            f"💡 *Enable **LLM Mode** in the sidebar → paste your **Claude API key** from console.anthropic.com*\n\n"
+            f"Try: *'Give me a summary'* · *'Which city is worst?'* · *'Best product?'*"
+        )
+        st.session_state.blinkbot_history  = [{"role":"bot","msg":welcome,"fig_json":None}]
+
+    if "bb_messages_llm" not in st.session_state:
+        st.session_state.bb_messages_llm = []
+
+    for msg in st.session_state.blinkbot_history:
+        css_class = "chat-message-bot" if msg["role"] == "bot" else "chat-message-user"
+        prefix    = "" if msg["role"] == "bot" else "💬 "
+        st.markdown(f'<div class="{css_class}">{prefix}{msg["msg"]}</div>', unsafe_allow_html=True)
+        if msg["role"] == "bot" and msg.get("fig_json"):
+            restored = _fig_from_json(msg["fig_json"])
+            if restored:
+                st.plotly_chart(restored, use_container_width=True, key=f"bb_fig_{id(msg)}")
+
+    st.markdown("**💡 Quick Questions:**")
+    QUICK_BASE = [
+        ("📊 Summary",       "Give me a full business summary"),
+        ("🏆 Best Product",  "Which product is performing best?"),
+        ("📍 City Analysis", "Which city is performing worst?"),
+        ("⚡ Influencers",   "How is influencer marketing performing?"),
+    ]
+    QUICK_FOLLOWUP: list[tuple[str, str]] = []
+    if _ui_mem.last_intent == "city" and _ui_mem.last_city:
+        QUICK_FOLLOWUP.append(("⚖️ Compare Cities",   "Compare best vs worst city"))
+    if _ui_mem.last_intent in ("revenue","summary") and _ui_mem.last_category:
+        QUICK_FOLLOWUP.append(("🏷️ Category Drill",   f"Tell me more about {_ui_mem.last_category}"))
+    if _ui_mem.last_product:
+        QUICK_FOLLOWUP.append(("📦 Reorder Risk",      f"Inventory risk for {_ui_mem.last_product}"))
+    if _ui_mem.turn_count > 0:
+        QUICK_FOLLOWUP.append(("🔄 Tell Me More",      "Tell me more"))
+
+    display_items = (QUICK_FOLLOWUP + QUICK_BASE)[:4]
+    quick_cols    = st.columns(len(display_items))
+    clicked_quick = None
+    for i, (btn_label, q_text) in enumerate(display_items):
+        with quick_cols[i]:
+            if st.button(btn_label, key=f"bb_q{i}", use_container_width=True):
+                clicked_quick = q_text
+
+    with st.form(key="bb_main_form", clear_on_submit=True):
+        fc1, fc2 = st.columns([5, 1])
+        with fc1:
+            ph = (
+                "Ask anything — I'll answer with data and a chart..."
+                if (use_ai_mode and api_key)
+                else "e.g. What is my total profit? Which city is weakest?"
+            )
+            user_input = st.text_input("Ask BlinkBot...", placeholder=ph, label_visibility="collapsed")
+        with fc2:
+            submitted = st.form_submit_button("Ask 🤖", use_container_width=True)
+
+    question_to_answer = None
+    if submitted and user_input.strip():
+        question_to_answer = user_input.strip()
+    elif clicked_quick:
+        question_to_answer = clicked_quick
+
+    if question_to_answer:
+        st.session_state.blinkbot_history.append({"role":"user","msg":question_to_answer,"fig_json":None})
+        st.session_state.bb_messages_llm.append({"role":"user","content":question_to_answer})
+
+        response_fig     = _detect_chart_for_question(question_to_answer, _bb_ctx_live, df)
+        response_fig_json = _fig_to_json(response_fig)
+
+        if use_ai_mode and api_key:
+            system_prompt = _build_llm_system_prompt(df, kpis)
+            clean_messages = _sanitise_messages(st.session_state.bb_messages_llm)
+
+            st.markdown(f'<div class="chat-message-user">💬 {question_to_answer}</div>', unsafe_allow_html=True)
+            stream_placeholder = st.empty()
+            full_response      = ""
+            error_occurred     = False
+
+            for chunk in _call_claude_stream(clean_messages, system_prompt, api_key):
+                full_response += chunk
+                if "⚠️" in chunk:
+                    error_occurred = True
+                stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}▊</div>', unsafe_allow_html=True)
+
+            stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}</div>', unsafe_allow_html=True)
+
+            if response_fig and not error_occurred:
+                st.plotly_chart(response_fig, use_container_width=True, key="bb_stream_chart")
+
+            if not error_occurred:
+                st.session_state.bb_messages_llm.append({"role": "assistant", "content": full_response})
+            else:
+                st.session_state.bb_messages_llm = []
+
+            if len(st.session_state.bb_messages_llm) > _LLM_HISTORY_LIMIT * 2:
+                st.session_state.bb_messages_llm = st.session_state.bb_messages_llm[-_LLM_HISTORY_LIMIT:]
+
+            st.session_state.blinkbot_history.append({
+                "role": "bot", "msg": full_response,
+                "fig_json": response_fig_json if not error_occurred else None,
+            })
+            st.rerun()
+        else:
+            response_text, response_fig_rb = blinkbot_analyze(question_to_answer, df)
+            final_fig = response_fig_rb or response_fig
+            st.session_state.blinkbot_history.append({
+                "role": "bot", "msg": response_text, "fig_json": _fig_to_json(final_fig),
+            })
+            st.rerun()
+
+    if len(st.session_state.blinkbot_history) > 1:
+        cl1, cl2 = st.columns([1, 5])
+        with cl1:
+            if st.button("🗑️ Clear Chat & Memory", type="secondary", key="clear_chat", use_container_width=True):
+                st.session_state.blinkbot_history  = []
+                st.session_state.bb_messages_llm   = []
+                st.session_state.bb_memory         = ConversationMemory().to_dict()
+                st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── PAGE 9 — DATA EXPLORER
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def render_data_explorer():
+    page_header("Data Explorer", "Search · Filter · Data Quality & Trust")
+
+    dq = data_quality_report(df)
+    q1, q2, q3, q4 = st.columns(4)
+    for col, icon, label, val in [
+        (q1,"🧾","Total Rows",    f"{dq['total_rows']:,}"),
+        (q2,"📊","Total Columns", f"{dq['total_cols']}"),
+        (q3,"❓","Missing Values",f"{dq['missing_total']:,}"),
+        (q4,"🔁","Duplicate Rows",f"{dq['dup_rows']:,}"),
+    ]:
+        with col:
+            kpi_card(label, val)
+
+    validation_ok = dq["missing_total"] == 0 and dq["dup_rows"] == 0
+    status_txt = "✅ No missing values or duplicates detected in the current (filtered) view" if validation_ok else "⚠️ Data quality issues detected below"
+    status_clr = "#16A34A" if validation_ok else "#f59e0b"
+    st.markdown(f'<div style="margin:10px 0 20px;font-size:12px;font-weight:600;color:{status_clr};background:rgba(15,23,42,.06);padding:10px 14px;border-radius:8px">{status_txt}</div>', unsafe_allow_html=True)
+
+    if dq["city_map"]:
+        st.markdown('<div class="section-head">CITY NAME STANDARDIZATION APPLIED</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="narrative-box">The following city aliases were detected in your upload and merged '
+            'into one canonical name so they are not double-counted:<br>' +
+            "<br>".join(f"<b>{k}</b> → {v}" for k, v in dq["city_map"].items()) + "</div>",
             unsafe_allow_html=True,
         )
 
-        # Show chart inline after response
-        if response_fig and not error_occurred:
-            st.plotly_chart(response_fig, use_container_width=True, key="bb_stream_chart")
+    if len(dq["missing_by_col"]) > 0:
+        st.markdown('<div class="section-head">MISSING VALUES BY COLUMN</div>', unsafe_allow_html=True)
+        miss_df = dq["missing_by_col"].reset_index()
+        miss_df.columns = ["Column", "Missing Count"]
+        st.dataframe(miss_df, use_container_width=True, height=min(300, 40 + 32*len(miss_df)))
 
-        # Only store clean successful responses in LLM history
-        if not error_occurred:
-            st.session_state.bb_messages_llm.append({"role": "assistant", "content": full_response})
-        else:
-            # On error, clear corrupted LLM history so next question starts fresh
-            st.session_state.bb_messages_llm = []
+    st.markdown('<div class="section-head">SEARCH & FILTER RECORDS</div>', unsafe_allow_html=True)
+    search_term = st.text_input("Search across all text columns", placeholder="Type to search product, city, category...")
+    view_df = df.copy()
+    if search_term:
+        text_cols = view_df.select_dtypes(include="object").columns
+        mask = pd.Series(False, index=view_df.index)
+        for c in text_cols:
+            mask |= view_df[c].astype(str).str.contains(search_term, case=False, na=False)
+        view_df = view_df[mask]
+        st.caption(f"{len(view_df):,} rows match '{search_term}'")
 
-        # Trim LLM history to avoid unbounded growth
-        if len(st.session_state.bb_messages_llm) > _LLM_HISTORY_LIMIT * 2:
-            st.session_state.bb_messages_llm = st.session_state.bb_messages_llm[-_LLM_HISTORY_LIMIT:]
+    st.dataframe(view_df, use_container_width=True, height=400)
+    st.download_button("⬇ Download Current View (CSV)", view_df.to_csv(index=False), "novams_explorer.csv", "text/csv")
 
-        st.session_state.blinkbot_history.append({
-            "role":     "bot",
-            "msg":      full_response,
-            "fig_json": response_fig_json if not error_occurred else None,
-        })
+    st.markdown('<div class="section-head">COLUMN TYPES</div>', unsafe_allow_html=True)
+    dtype_df = dq["dtypes"].reset_index()
+    dtype_df.columns = ["Column", "Type"]
+    st.dataframe(dtype_df, use_container_width=True, height=min(350, 40 + 32*len(dtype_df)))
 
-    # ── Rule-based fallback mode ──────────────────────────────────────────────────
-    else:
-        response_text, response_fig_rb = blinkbot_analyze(question_to_answer, df)
-        # Prefer rule-based chart if the keyword router found nothing
-        final_fig = response_fig_rb or response_fig
-        st.session_state.blinkbot_history.append({
-            "role":     "bot",
-            "msg":      response_text,
-            "fig_json": _fig_to_json(final_fig),
-        })
-        st.rerun()
 
-    if use_ai_mode and api_key:
-        st.rerun()   # re-render so next input box is fresh
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── MAIN — DISPATCH TO ACTIVE PAGE
+# ══════════════════════════════════════════════════════════════════════════════════
 
-# ── Clear chat + memory ───────────────────────────────────────────────────────────
-if len(st.session_state.blinkbot_history) > 1:
-    cl1, cl2 = st.columns([1, 5])
-    with cl1:
-        if st.button("🗑️ Clear Chat & Memory", type="secondary", key="clear_chat", use_container_width=True):
-            st.session_state.blinkbot_history  = []
-            st.session_state.bb_messages_llm   = []
-            st.session_state.bb_memory         = ConversationMemory().to_dict()
-            st.rerun()
+_PAGE_RENDERERS = {
+    "Executive Overview":      render_executive_overview,
+    "Sales Analytics":         render_sales_analytics,
+    "Delivery Analytics":      render_delivery_analytics,
+    "Inventory Intelligence":  render_inventory_intelligence,
+    "Operations":              render_operations,
+    "Customer Analytics":      render_customer_analytics,
+    "Finance":                 render_finance,
+    "AI Analyst":              render_ai_analyst,
+    "Data Explorer":           render_data_explorer,
+}
 
-# ── RAW DATA TABLE ────────────────────────────────────────────────────────────────
-if show_raw:
-    st.markdown('<div class="section-head">RAW DATA TABLE</div>', unsafe_allow_html=True)
-    display_cols = ["Product Name","Category","City","Original Price","Current Price",
-                    "Discount","Orders","Total Revenue","Profit","Profit Margin","Influencer Active"]
-    show_df = df[[c for c in display_cols if c in df.columns]].copy()
-    show_df["Profit Margin"] = show_df["Profit Margin"].round(1).astype(str) + "%"
-    st.dataframe(show_df, use_container_width=True, height=350)
-    st.download_button("⬇ Download Filtered CSV", df.to_csv(index=False), "zepto_filtered.csv", "text/csv")
+_PAGE_RENDERERS.get(active_page, render_executive_overview)()
 
 # ── FOOTER ────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="footer">
-  Ayush Intelligence Hub v5.0 — Phase 4 (LLM) &nbsp;·&nbsp;
+  NovaMS — Nova Management Solutions &nbsp;·&nbsp;
   Developed by <span class="dev">Ayush Mishra</span> &nbsp;·&nbsp;
   Pandas · SciPy · scikit-learn · Streamlit · Plotly
 </div>
 """, unsafe_allow_html=True)
-
-if auto_refresh:
-    import time
-    time.sleep(30)
-    st.rerun()
