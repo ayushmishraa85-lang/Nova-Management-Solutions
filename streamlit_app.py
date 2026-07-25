@@ -44,22 +44,22 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --nova-ink:      #0F172A;
-  --nova-ink-soft: #475569;
-  --nova-muted:    #94A3B8;
-  --nova-border:   #E2E8F0;
-  --nova-bg:       #F8FAFC;
-  --nova-card:     #FFFFFF;
+  --nova-ink:      #F1F5F9;
+  --nova-ink-soft: #9AA4B2;
+  --nova-muted:    #6B7688;
+  --nova-border:   #262B33;
+  --nova-bg:       #0A0C0F;
+  --nova-card:     #14171C;
   --nova-blue:     #1D4DFF;
-  --nova-blue-tint:#EEF2FF;
-  --nova-green:    #16A34A;
-  --nova-green-tint:#F0FDF4;
-  --nova-red:      #DC2626;
-  --nova-red-tint: #FEF2F2;
-  --nova-amber:    #B45309;
-  --nova-amber-tint:#FFFBEB;
-  --nova-sidebar:  #0B1220;
-  --nova-sidebar-2:#131C31;
+  --nova-blue-tint:rgba(29,77,255,.14);
+  --nova-green:    #22C55E;
+  --nova-green-tint:rgba(34,197,94,.14);
+  --nova-red:      #EF4444;
+  --nova-red-tint: rgba(239,68,68,.14);
+  --nova-amber:    #D97706;
+  --nova-amber-tint:rgba(217,119,6,.14);
+  --nova-sidebar:  #07090B;
+  --nova-sidebar-2:#14181D;
 }
 
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
@@ -112,7 +112,7 @@ p, span, div { -webkit-font-smoothing: antialiased; }
 .missing-box {
   background: var(--nova-amber-tint); border-left: 3px solid var(--nova-amber);
   border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 10px 0;
-  font-size: 12.5px; color: #7C5A0B; line-height: 1.65;
+  font-size: 12.5px; color: #FBBF24; line-height: 1.65;
 }
 
 /* ── Insight cards ── */
@@ -140,9 +140,9 @@ p, span, div { -webkit-font-smoothing: antialiased; }
   padding: 14px 16px; margin: 8px 0; font-size: 13px; color: var(--nova-ink); line-height: 1.65;
 }
 .chat-message-user {
-  background: var(--nova-ink); border-radius: 10px 10px 4px 10px;
+  background: var(--nova-blue); border-radius: 10px 10px 4px 10px;
   padding: 12px 16px; margin: 8px 0 8px auto; max-width: 78%;
-  font-size: 13px; color: #F1F5F9; text-align: left;
+  font-size: 13px; color: #14171C; text-align: left;
 }
 div[data-testid="metric-container"] {
   background: var(--nova-card); border: 1px solid var(--nova-border); border-radius: 10px; padding: 12px;
@@ -204,14 +204,14 @@ CITY_CLR = {"Delhi":"#6366f1","Mumbai":"#06b6d4","Bangalore":"#10b981","Hyderaba
 PLOTLY_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter", color="#475569", size=11),
+    font=dict(family="Inter", color="#9AA4B2", size=11),
     margin=dict(l=10, r=10, t=30, b=10),
-    xaxis=dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)"),
-    yaxis=dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)"),
+    xaxis=dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)"),
+    yaxis=dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)"),
     legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
 )
 
-_AXIS_DEFAULTS = dict(gridcolor="rgba(15,23,42,.06)", linecolor="rgba(15,23,42,.08)")
+_AXIS_DEFAULTS = dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)")
 
 
 def _hex_to_rgba(hex_color: str, alpha: float = 0.08) -> str:
@@ -821,7 +821,7 @@ def _chart_revenue_by_category(ctx: dict) -> go.Figure:
         marker_color=[CAT_CLR.get(c, "#6366f1") for c in cat_r.index],
         marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cat_r.values], textposition="outside",
-        textfont=dict(color="#0F172A", size=10),
+        textfont=dict(color="#F1F5F9", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text="💬 Revenue by Category", font=dict(color="#1D4DFF", size=12)),
@@ -837,7 +837,7 @@ def _chart_city_ranking(ctx: dict) -> go.Figure:
         x=cr.values, y=cr.index.tolist(), orientation="h",
         marker_color=colors, marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cr.values], textposition="outside",
-        textfont=dict(color="#0F172A", size=10),
+        textfont=dict(color="#F1F5F9", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text="💬 City Revenue Ranking", font=dict(color="#1D4DFF", size=12)),
@@ -853,7 +853,7 @@ def _chart_top_products(ctx: dict, n: int = 8) -> go.Figure:
         marker=dict(color=pr.values, colorscale=[[0,"#312e81"],[0.5,"#6366f1"],[1,"#06b6d4"]], showscale=False),
         marker_line_width=0,
         text=[fmt(v) for v in pr.values], textposition="outside",
-        textfont=dict(color="#0F172A", size=10),
+        textfont=dict(color="#F1F5F9", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text=f"💬 Top {n} Products by Revenue", font=dict(color="#1D4DFF", size=12)),
@@ -904,7 +904,7 @@ def _chart_profit_margin_by_category(ctx: dict, df: pd.DataFrame) -> go.Figure:
         x=bm.index.tolist(), y=bm.values,
         marker_color=colors, marker_line_width=0, opacity=0.85,
         text=[f"{v:.1f}%" for v in bm.values], textposition="outside",
-        textfont=dict(color="#0F172A", size=10),
+        textfont=dict(color="#F1F5F9", size=10),
     ))
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text="💬 Avg Profit Margin by Category", font=dict(color="#1D4DFF", size=12)),
@@ -919,7 +919,7 @@ def _chart_orders_by_city(df: pd.DataFrame) -> go.Figure:
         marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_ord.index],
         marker_line_width=0, opacity=0.85,
         text=city_ord.values, textposition="outside",
-        textfont=dict(color="#0F172A", size=10),
+        textfont=dict(color="#F1F5F9", size=10),
     ))
     fig.update_layout(**PLOTLY_LAYOUT,
         title=dict(text="💬 Orders by City", font=dict(color="#1D4DFF", size=12)),
@@ -945,16 +945,16 @@ def _chart_summary_snapshot(ctx: dict) -> go.Figure:
         marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_r.index],
         marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in city_r.values], textposition="outside",
-        textfont=dict(color="#0F172A", size=9), showlegend=False,
+        textfont=dict(color="#F1F5F9", size=9), showlegend=False,
     ), row=1, col=2)
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter", color="#475569", size=10),
+        font=dict(family="Inter", color="#9AA4B2", size=10),
         margin=dict(l=10, r=10, t=40, b=10), height=260,
         title=dict(text="💬 Snapshot", font=dict(color="#1D4DFF", size=12)),
     )
-    fig.update_annotations(font_color="#475569", font_size=10)
-    fig.update_yaxes(tickprefix="₹", gridcolor="rgba(15,23,42,.06)")
+    fig.update_annotations(font_color="#9AA4B2", font_size=10)
+    fig.update_yaxes(tickprefix="₹", gridcolor="rgba(255,255,255,.05)")
     return fig
 
 
@@ -1609,7 +1609,7 @@ with st.sidebar:
             api_key = secret_key.strip().strip('"').strip("'")
             st.markdown("""
             <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
-                        border-radius:8px;padding:8px 10px;font-size:10px;color:#16A34A">
+                        border-radius:8px;padding:8px 10px;font-size:10px;color:#22C55E">
               ✅ Claude key loaded from secrets
             </div>""", unsafe_allow_html=True)
         else:
@@ -1629,13 +1629,13 @@ with st.sidebar:
             if api_key and not _is_placeholder:
                 st.markdown("""
                 <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);
-                            border-radius:8px;padding:8px 10px;font-size:10px;color:#16A34A">
+                            border-radius:8px;padding:8px 10px;font-size:10px;color:#22C55E">
                   ✅ Claude key set — LLM mode active
                 </div>""", unsafe_allow_html=True)
             elif _is_placeholder:
                 st.markdown("""
                 <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
-                            border-radius:8px;padding:8px 10px;font-size:10px;color:#DC2626">
+                            border-radius:8px;padding:8px 10px;font-size:10px;color:#EF4444">
                   ❌ Key looks invalid.<br><br>
                   Go to <strong>console.anthropic.com</strong> → API Keys.<br>
                   Paste your key directly — no quotes, no spaces.
@@ -1657,8 +1657,8 @@ with st.sidebar:
     else:
         api_key = ""
         st.markdown("""
-        <div style="background:rgba(15,23,42,.06);border:1px solid #E2E8F0;
-                    border-radius:8px;padding:8px 10px;font-size:10px;color:#475569">
+        <div style="background:rgba(255,255,255,.05);border:1px solid #262B33;
+                    border-radius:8px;padding:8px 10px;font-size:10px;color:#9AA4B2">
           🔧 Rule-based mode — fast &amp; offline.<br>Toggle above to enable LLM responses.
         </div>""", unsafe_allow_html=True)
 
@@ -1744,7 +1744,7 @@ def render_executive_overview():
         city_data = df.groupby("City")["Total Revenue"].sum().sort_values(ascending=False).reset_index()
         fig = px.bar(city_data, x="City", y="Total Revenue", color="City",
                      color_discrete_map=CITY_CLR, title="Revenue by City", labels={"Total Revenue":"Revenue (₹)"})
-        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
         fig.update_traces(marker_line_width=0, opacity=0.85)
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
         st.plotly_chart(fig, use_container_width=True)
@@ -1752,7 +1752,7 @@ def render_executive_overview():
         cat_data = df.groupby("Category")["Total Revenue"].sum().reset_index()
         fig = px.pie(cat_data, values="Total Revenue", names="Category",
                      color="Category", color_discrete_map=CAT_CLR, title="Category Distribution", hole=0.55)
-        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
         fig.update_traces(textinfo="label+percent", textfont_size=10)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1760,11 +1760,11 @@ def render_executive_overview():
     pivot = df.pivot_table(index="Category", columns="City", values="Total Revenue", aggfunc="sum", fill_value=0)
     fig = go.Figure(data=go.Heatmap(
         z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
-        colorscale=[[0,"#EEF2FF"],[0.35,"#C7D2FE"],[0.7,"#818CF8"],[1,"#1D4DFF"]],
+        colorscale=[[0,"#161A21"],[0.35,"#26305C"],[0.7,"#3D52C4"],[1,"#1D4DFF"]],
         text=[[fmt(v) for v in row] for row in pivot.values],
         texttemplate="%{text}", hovertemplate="<b>%{y}</b><br>%{x}: %{text}<extra></extra>",
     ))
-    fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Intensity (City × Category)", title_font_color="#0F172A", height=280)
+    fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Intensity (City × Category)", title_font_color="#F1F5F9", height=280)
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown('<div class="section-head">AI BUSINESS INSIGHTS</div>', unsafe_allow_html=True)
@@ -1818,8 +1818,8 @@ def render_sales_analytics():
         fig = px.bar(top_prod, x="Total Revenue", y="Product Name", orientation="h",
                      title="Top 10 Products by Revenue", color="Total Revenue",
                      color_continuous_scale=["#6366f1","#06b6d4","#10b981"])
-        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", coloraxis_showscale=False)
-        fig.update_yaxes(autorange="reversed", gridcolor="rgba(15,23,42,.06)")
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", coloraxis_showscale=False)
+        fig.update_yaxes(autorange="reversed", gridcolor="rgba(255,255,255,.05)")
         fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
         st.plotly_chart(fig, use_container_width=True)
     with col2:
@@ -1827,7 +1827,7 @@ def render_sales_analytics():
                          color_discrete_map=CAT_CLR, hover_name="Product Name",
                          hover_data={"City":True,"Discount":True},
                          title="Orders vs Revenue (Scatter)", labels={"Total Revenue":"Revenue (₹)"})
-        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
         fig.update_traces(marker=dict(size=7, opacity=0.7))
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
         st.plotly_chart(fig, use_container_width=True)
@@ -1840,7 +1840,7 @@ def render_sales_analytics():
             fig = px.bar(inf_data, x="Category", y="Avg Revenue", color="Influencer",
                          barmode="group", title="Influencer Impact by Category",
                          color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
-            fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A")
+            fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
             fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
             st.plotly_chart(fig, use_container_width=True)
         else:
@@ -1855,7 +1855,7 @@ def render_sales_analytics():
         fig.add_trace(go.Scatter(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Orders"],
                                  name="Avg Orders", mode="lines+markers",
                                  line=dict(color="#06b6d4", width=2)), secondary_y=True)
-        fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#0F172A")
+        fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#F1F5F9")
         fig.update_yaxes(tickprefix="₹", secondary_y=False)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -1863,7 +1863,7 @@ def render_sales_analytics():
     price_data["Price Tier"] = price_data["Price Tier"].astype(str)
     fig = px.bar(price_data, x="Price Tier", y="Total Revenue", color="Price Tier",
                  color_discrete_sequence=PAL, title="Revenue by Price Tier", labels={"Total Revenue":"Revenue (₹)"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
     fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
     fig.update_traces(marker_line_width=0, opacity=0.85)
     st.plotly_chart(fig, use_container_width=True)
@@ -1873,7 +1873,7 @@ def render_sales_analytics():
         st.markdown('<div class="section-head">STATISTICAL ANALYSIS</div>', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown('<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">📊 Descriptive Statistics</div>', unsafe_allow_html=True)
+            st.markdown('<div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">📊 Descriptive Statistics</div>', unsafe_allow_html=True)
             for label, val in [
                 ("Mean Revenue",   fmt(sd["mean"])), ("Median Revenue", fmt(sd["median"])),
                 ("Std Deviation",  fmt(sd["std"])),  ("Skewness",       f"{sd['skewness']:.3f}"),
@@ -1881,21 +1881,21 @@ def render_sales_analytics():
             ]:
                 st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
             normal_txt = "✓ Normally distributed" if sd["is_normal"] else "⚠ Not normally distributed"
-            normal_clr = "#16A34A" if sd["is_normal"] else "#D97706"
-            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{normal_clr};background:rgba(15,23,42,.06);padding:7px 10px;border-radius:7px">{normal_txt}</div></div>', unsafe_allow_html=True)
+            normal_clr = "#22C55E" if sd["is_normal"] else "#D97706"
+            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{normal_clr};background:rgba(255,255,255,.05);padding:7px 10px;border-radius:7px">{normal_txt}</div></div>', unsafe_allow_html=True)
         with c2:
             outliers = sd["outliers"]
-            st.markdown(f'<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">⚠ Outlier Detection ({len(outliers)} outliers)</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">⚠ Outlier Detection ({len(outliers)} outliers)</div>', unsafe_allow_html=True)
             if len(outliers) > 0:
                 for _, row in outliers.head(6).iterrows():
-                    st.markdown(f'<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:7px;padding:8px 10px;margin-bottom:5px"><div style="font-size:11px;font-weight:600;color:#0F172A">{row["Product Name"]}</div><div style="font-size:9px;color:#475569">{row["City"]} · {row["Category"]}</div><div style="display:flex;justify-content:space-between;margin-top:3px"><span style="font-size:10px;color:#1D4DFF">{fmt(row["Total Revenue"])}</span><span style="font-size:10px;color:#DC2626;font-family:monospace">Z={row["Z-Score"]}</span></div></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:7px;padding:8px 10px;margin-bottom:5px"><div style="font-size:11px;font-weight:600;color:#F1F5F9">{row["Product Name"]}</div><div style="font-size:9px;color:#9AA4B2">{row["City"]} · {row["Category"]}</div><div style="display:flex;justify-content:space-between;margin-top:3px"><span style="font-size:10px;color:#1D4DFF">{fmt(row["Total Revenue"])}</span><span style="font-size:10px;color:#EF4444;font-family:monospace">Z={row["Z-Score"]}</span></div></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div style="font-size:11px;color:#64748B;text-align:center;padding:20px">No significant outliers</div>', unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
         with c3:
             r_disc, p_disc = sd["r_disc"], sd["p_disc"]
             r_rev,  p_rev  = sd["r_rev"],  sd["p_rev"]
-            st.markdown('<div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">🔗 Correlation Analysis</div>', unsafe_allow_html=True)
+            st.markdown('<div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:16px"><div style="font-size:11px;font-weight:600;color:#1D4DFF;margin-bottom:10px">🔗 Correlation Analysis</div>', unsafe_allow_html=True)
             for label, val in [
                 ("Discount → Orders (r)", f"{r_disc:.3f}"), ("Discount → Orders (p)", f"{p_disc:.4f}"),
                 ("Revenue → Profit (r)",  f"{r_rev:.3f}"),  ("Revenue → Profit (p)",  f"{p_rev:.4f}"),
@@ -1904,14 +1904,14 @@ def render_sales_analytics():
             for pair, r, p in [("Discount ↔ Orders", r_disc, p_disc), ("Revenue ↔ Profit", r_rev, p_rev)]:
                 sig = p < 0.05; direction = "positive" if r > 0 else "negative"
                 txt = f"{'Strong' if abs(r) > 0.5 else 'Weak'} {direction} — {'significant ✓' if sig else 'not significant'}"
-                clr = "#16A34A" if sig else "#D97706"
+                clr = "#22C55E" if sig else "#D97706"
                 st.markdown(f'<div style="background:rgba(99,102,241,.07);border-radius:6px;padding:7px 10px;margin-top:6px"><div style="font-size:10px;font-weight:600;color:#1D4DFF">{pair}</div><div style="font-size:10px;color:{clr};margin-top:2px">{txt}</div></div>', unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
         fig = px.imshow(sd["corr_matrix"], text_auto=True,
-                        color_continuous_scale=["#DC2626","#F8FAFC","#1D4DFF"],
+                        color_continuous_scale=["#EF4444","#1A1E24","#1D4DFF"],
                         zmin=-1, zmax=1, title="Full Correlation Matrix")
-        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", height=350)
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=350)
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Enable 'Show Statistical Analysis' in the sidebar (needs ≥5 rows in the current filter).")
@@ -1927,13 +1927,13 @@ def render_sales_analytics():
             fig.add_trace(go.Scatter(x=fc["xs"], y=fc["actual_vals"], mode="lines+markers", name="Actual", line=dict(color="#6366f1", width=2), marker=dict(size=4)))
             fig.add_trace(go.Scatter(x=fc["xs"], y=fc["trend_vals"], mode="lines", name="Trend", line=dict(color="#06b6d4", width=2, dash="dash")))
             fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
-            fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#0F172A", height=280)
+            fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#F1F5F9", height=280)
             fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
             st.plotly_chart(fig, use_container_width=True)
         with col2:
-            growth_clr = "#16A34A" if fc["growth_pct"] >= 0 else "#DC2626"
+            growth_clr = "#22C55E" if fc["growth_pct"] >= 0 else "#EF4444"
             st.markdown(f"""
-            <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:20px">
+            <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:20px">
               <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Forecast Value</div>
               <div style="font-size:28px;font-weight:700;font-family:monospace;background:linear-gradient(90deg,#1D4DFF,#1D4DFF);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{fmt(fc['next_val'])}</div>
               <div style="display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;margin:8px 0;background:{'rgba(16,185,129,.12)' if fc['growth_pct']>=0 else 'rgba(239,68,68,.12)'};color:{growth_clr}">
@@ -1943,8 +1943,8 @@ def render_sales_analytics():
             for label, val in [("R² Score", f"{fc['r2']:.4f}"), ("Slope β₁", f"{fc['slope']:.3f}"), ("CI Band", fmt(fc["ci"]))]:
                 st.markdown(f'<div class="stat-row"><span class="stat-label">{label}</span><span class="stat-value">{val}</span></div>', unsafe_allow_html=True)
             quality = "✓ Good fit" if fc["r2"] > 0.6 else "⚠ Low R² — noisy data"
-            q_clr   = "#16A34A" if fc["r2"] > 0.6 else "#D97706"
-            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{q_clr};background:rgba(15,23,42,.06);padding:7px 10px;border-radius:7px">{quality}</div></div>', unsafe_allow_html=True)
+            q_clr   = "#22C55E" if fc["r2"] > 0.6 else "#D97706"
+            st.markdown(f'<div style="margin-top:10px;font-size:10px;color:{q_clr};background:rgba(255,255,255,.05);padding:7px 10px;border-radius:7px">{quality}</div></div>', unsafe_allow_html=True)
     else:
         st.info("Need at least 5 distinct products in the current filter to fit a forecast.")
 
@@ -1967,8 +1967,8 @@ def render_sales_analytics():
         fig.add_vrect(x0=-0.5, x1=cutoff_idx + 0.5, fillcolor="rgba(99,102,241,.06)", line_width=0,
             annotation_text=f"Top {cutoff_products} products", annotation_position="top left", annotation_font_color="#1D4DFF")
         fig.update_layout(**PLOTLY_BASE,
-            title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue", font=dict(color="#0F172A", size=12)),
-            height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(15,23,42,.06)"),
+            title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue", font=dict(color="#F1F5F9", size=12)),
+            height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(255,255,255,.05)"),
             yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0,105], ticksuffix="%", showgrid=False),
             legend=dict(orientation="h", y=1.1))
         st.plotly_chart(fig, use_container_width=True)
@@ -1976,13 +1976,13 @@ def render_sales_analytics():
         pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
         rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
         st.markdown(f"""
-        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:18px;text-align:center">
+        <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:18px;text-align:center">
           <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">80/20 Rule</div>
           <div style="font-size:36px;font-weight:700;background:linear-gradient(90deg,#1D4DFF,#1D4DFF);-webkit-background-clip:text;-webkit-text-fill-color:transparent">{pareto_pct:.0f}%</div>
-          <div style="font-size:11px;color:#475569;margin-top:4px">of products drive</div>
+          <div style="font-size:11px;color:#9AA4B2;margin-top:4px">of products drive</div>
           <div style="font-size:22px;font-weight:700;color:#10b981;margin:6px 0">80%</div>
-          <div style="font-size:11px;color:#475569">of revenue</div>
-          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(15,23,42,.08)">
+          <div style="font-size:11px;color:#9AA4B2">of revenue</div>
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09)">
             <div class="stat-row"><span class="stat-label">Key SKUs</span><span class="stat-value">{cutoff_products}</span></div>
             <div class="stat-row"><span class="stat-label">Their revenue</span><span class="stat-value">{fmt(rev_80)}</span></div>
             <div class="stat-row"><span class="stat-label">Total SKUs</span><span class="stat-value">{len(prod_rev_sorted)}</span></div>
@@ -2018,16 +2018,16 @@ def render_delivery_analytics():
     with col1:
         fig = go.Figure(go.Indicator(
             mode="gauge+number", value=dl["otd_pct"],
-            title={"text":"On-Time Delivery %","font":{"color":"#475569","size":13}},
+            title={"text":"On-Time Delivery %","font":{"color":"#9AA4B2","size":13}},
             number={"suffix":"%","font":{"color":dl["status_color"],"size":28}},
             gauge={"axis":{"range":[0,100],"tickcolor":"#64748B"},
-                   "bar":{"color":dl["status_color"]}, "bgcolor":"#F8FAFC",
+                   "bar":{"color":dl["status_color"]}, "bgcolor":"#14171C",
                    "steps":[{"range":[0,85],"color":"rgba(239,68,68,.15)"},
                              {"range":[85,95],"color":"rgba(245,158,11,.15)"},
                              {"range":[95,100],"color":"rgba(16,185,129,.15)"}],
                    "threshold":{"line":{"color":"#fff","width":2},"thickness":0.75,"value":95}},
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220, margin=dict(l=20,r=20,t=40,b=10))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220, margin=dict(l=20,r=20,t=40,b=10))
         st.plotly_chart(fig, use_container_width=True)
         st.markdown(f'<div style="text-align:center;font-size:12px;font-weight:600;color:{dl["status_color"]}">{dl["status"]}</div>', unsafe_allow_html=True)
     with col2:
@@ -2036,8 +2036,8 @@ def render_delivery_analytics():
             y=["P50","Avg","P90","Promise"], orientation="h",
             marker_color=["#10b981","#6366f1","#ef4444","#f59e0b"], marker_line_width=0,
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220,
-                          title=dict(text="Delivery Time (minutes)", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
+                          title=dict(text="Delivery Time (minutes)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=40,t=40,b=10),
                           xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
                           yaxis=dict(gridcolor="rgba(0,0,0,0)"))
@@ -2047,8 +2047,8 @@ def render_delivery_analytics():
         fig = go.Figure(go.Bar(x=dl["hist_centers"], y=dl["hist_counts"], marker_color=bar_colors, marker_line_width=0))
         fig.add_vline(x=dl["promise"], line_dash="dash", line_color="#f59e0b",
                       annotation_text="10-min promise", annotation_font_color="#f59e0b")
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=220,
-                          title=dict(text="Order Distribution by Time", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
+                          title=dict(text="Order Distribution by Time", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=40,b=10),
                           xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"))
@@ -2063,8 +2063,8 @@ def render_delivery_analytics():
             marker=dict(color=["#6366f1","#8b5cf6","#f59e0b","#ef4444","#10b981"]),
             connector=dict(line=dict(color="#CBD5E1", width=1)),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=300,
-                          title=dict(text=f"Order Quality Funnel | ODR: {df_d['odr_pct']:.1f}%", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
+                          title=dict(text=f"Order Quality Funnel | ODR: {df_d['odr_pct']:.1f}%", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10))
         st.plotly_chart(fig, use_container_width=True)
     with col2:
@@ -2073,10 +2073,10 @@ def render_delivery_analytics():
             y=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
             marker_color=["#ef4444","#f59e0b","#8b5cf6"], marker_line_width=0,
             text=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
-            textposition="outside", textfont=dict(color="#0F172A"),
+            textposition="outside", textfont=dict(color="#F1F5F9"),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=300,
-                          title=dict(text="Defect Breakdown by Category", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
+                          title=dict(text="Defect Breakdown by Category", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
         st.plotly_chart(fig, use_container_width=True)
@@ -2115,8 +2115,8 @@ def render_inventory_intelligence():
         for _, row in inventory.iterrows():
             st.markdown(
                 f'<div style="background:{row["_bg"]};border:1px solid {row["_border"]};border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">'
-                f'<div><div style="font-size:12px;font-weight:600;color:#0F172A">{row["Product"]}</div>'
-                f'<div style="font-size:10px;color:#475569;margin-top:2px">Stock: {row["Stock_Left"]} · Daily: {row["Daily_Sales"]} · Covers: {row["Days_Cover"]} days</div></div>'
+                f'<div><div style="font-size:12px;font-weight:600;color:#F1F5F9">{row["Product"]}</div>'
+                f'<div style="font-size:10px;color:#9AA4B2;margin-top:2px">Stock: {row["Stock_Left"]} · Daily: {row["Daily_Sales"]} · Covers: {row["Days_Cover"]} days</div></div>'
                 f'<div style="text-align:right"><div style="font-size:11px;font-weight:700;color:{row["_color"]}">{row["Risk"]}</div>'
                 f'<div style="font-size:10px;color:{row["_color"]};margin-top:2px">{row["Action"]}</div></div></div>',
                 unsafe_allow_html=True,
@@ -2129,11 +2129,11 @@ def render_inventory_intelligence():
             labels=["Critical 🔴","Low Stock 🟡","OK 🟢"], values=[critical_count, low_count, ok_count],
             hole=0.65, marker=dict(colors=["#ef4444","#f59e0b","#10b981"]), textinfo="label+value", textfont=dict(size=11),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
-                          title=dict(text="Stock Risk Distribution", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+                          title=dict(text="Stock Risk Distribution", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)))
         st.plotly_chart(fig, use_container_width=True)
-        st.markdown(f'<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:700;color:#ef4444">{critical_count}</div><div style="font-size:10px;color:#475569">Products need immediate reorder</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:700;color:#ef4444">{critical_count}</div><div style="font-size:10px;color:#9AA4B2">Products need immediate reorder</div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-head">FAST vs SLOW MOVERS</div>', unsafe_allow_html=True)
     prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
@@ -2142,14 +2142,14 @@ def render_inventory_intelligence():
         fast = prod_velocity.head(8)
         fig = go.Figure(go.Bar(x=fast.values, y=fast.index.tolist(), orientation="h",
             marker_color="#10b981", marker_line_width=0, text=fast.values, textposition="outside"))
-        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟢 Fast-Moving Products (by Orders)", font=dict(color="#0F172A", size=13)),
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟢 Fast-Moving Products (by Orders)", font=dict(color="#F1F5F9", size=13)),
                           height=280, yaxis=dict(autorange="reversed", gridcolor="rgba(0,0,0,0)"), showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     with col2:
         slow = prod_velocity.tail(8).sort_values()
         fig = go.Figure(go.Bar(x=slow.values, y=slow.index.tolist(), orientation="h",
             marker_color="#f59e0b", marker_line_width=0, text=slow.values, textposition="outside"))
-        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟡 Slow-Moving Products (by Orders)", font=dict(color="#0F172A", size=13)),
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="🟡 Slow-Moving Products (by Orders)", font=dict(color="#F1F5F9", size=13)),
                           height=280, yaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -2183,7 +2183,7 @@ def render_operations():
     city_ops = df.groupby("City").agg(Orders=("Orders","sum"), Revenue=("Total Revenue","sum")).sort_values("Orders", ascending=False).reset_index()
     fig = px.bar(city_ops, x="City", y="Orders", color="City", color_discrete_map=CITY_CLR,
                  title="Order Volume by City", labels={"Orders":"Total Orders"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", showlegend=False)
+    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
     fig.update_traces(marker_line_width=0, opacity=0.85)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -2192,7 +2192,7 @@ def render_operations():
         for col in _present_operations_cols:
             if pd.api.types.is_numeric_dtype(df[col]):
                 fig = px.histogram(df, x=col, nbins=20, title=f"Distribution of {col}", color_discrete_sequence=["#6366f1"])
-                fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#0F172A", height=260)
+                fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=260)
                 st.plotly_chart(fig, use_container_width=True)
     else:
         st.markdown("""
@@ -2233,8 +2233,8 @@ def render_customer_analytics():
         fig = go.Figure()
         fig.add_trace(go.Bar(name="New Customers",    x=weeks, y=new_c,    marker_color="#6366f1", marker_line_width=0))
         fig.add_trace(go.Bar(name="Repeat Customers", x=weeks, y=repeat_c, marker_color="#10b981", marker_line_width=0))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
-                          barmode="group", title=dict(text="New vs Repeat Customers (Weekly, illustrative)", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+                          barmode="group", title=dict(text="New vs Repeat Customers (Weekly, illustrative)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
         st.plotly_chart(fig, use_container_width=True)
@@ -2242,12 +2242,12 @@ def render_customer_analytics():
         retention_matrix = [[100,68,52,41],[100,71,55,43],[100,65,48,38],[100,73,58,46]]
         fig = go.Figure(go.Heatmap(
             z=retention_matrix, x=["W+0","W+1","W+2","W+3"], y=["Week 1","Week 2","Week 3","Week 4"],
-            colorscale=[[0,"#EEF2FF"],[0.4,"#C7D2FE"],[0.7,"#818CF8"],[1,"#1D4DFF"]],
+            colorscale=[[0,"#161A21"],[0.4,"#26305C"],[0.7,"#3D52C4"],[1,"#1D4DFF"]],
             text=[[f"{v}%" for v in row] for row in retention_matrix], texttemplate="%{text}",
             hovertemplate="Cohort: %{y}<br>Week: %{x}<br>Retention: %{text}<extra></extra>",
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=280,
-                          title=dict(text="Cohort Retention Table (%, illustrative)", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+                          title=dict(text="Cohort Retention Table (%, illustrative)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -2280,10 +2280,10 @@ def render_customer_analytics():
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",
             polar=dict(bgcolor="rgba(0,0,0,0)",
-                radialaxis=dict(visible=True, range=[0,1], gridcolor="rgba(15,23,42,.08)", tickfont=dict(size=8, color="#64748B")),
-                angularaxis=dict(gridcolor="rgba(15,23,42,.08)", tickfont=dict(size=10, color="#475569"))),
-            font=dict(family="Inter", color="#475569", size=11),
-            title=dict(text="City Competitive Radar (normalized per KPI)", font=dict(color="#0F172A", size=12)),
+                radialaxis=dict(visible=True, range=[0,1], gridcolor="rgba(255,255,255,.09)", tickfont=dict(size=8, color="#64748B")),
+                angularaxis=dict(gridcolor="rgba(255,255,255,.09)", tickfont=dict(size=10, color="#9AA4B2"))),
+            font=dict(family="Inter", color="#9AA4B2", size=11),
+            title=dict(text="City Competitive Radar (normalized per KPI)", font=dict(color="#F1F5F9", size=12)),
             legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
             margin=dict(l=30, r=30, t=50, b=30), height=360,
         )
@@ -2292,7 +2292,7 @@ def render_customer_analytics():
         radar_norm["Score"] = radar_norm.mean(axis=1) * 100
         ranked = radar_norm[["Score"]].sort_values("Score", ascending=False)
         st.markdown("""
-        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:16px">
+        <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:16px">
           <div style="font-size:10px;font-weight:600;color:#1D4DFF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">
             🏆 Composite City Score
           </div>
@@ -2303,7 +2303,7 @@ def render_customer_analytics():
             st.markdown(f"""
             <div style="margin-bottom:10px">
               <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                <span style="font-size:11px;color:#0F172A">{medals_r[i]} {city}</span>
+                <span style="font-size:11px;color:#F1F5F9">{medals_r[i]} {city}</span>
                 <span style="font-size:10px;font-weight:600;color:{clr};font-family:monospace">{score:.0f}/100</span>
               </div>
               <div style="background:rgba(99,130,255,.08);border-radius:4px;height:5px">
@@ -2346,8 +2346,8 @@ def render_finance():
             decreasing={"marker":{"color":"#ef4444"}}, increasing={"marker":{"color":"#10b981"}},
             totals={"marker":{"color":"#6366f1"}},
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=320,
-                          title=dict(text=f"Revenue → Net Profit | CM: {ue['cm_pct']:.1f}%", font=dict(color="#0F172A",size=12)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
+                          title=dict(text=f"Revenue → Net Profit | CM: {ue['cm_pct']:.1f}%", font=dict(color="#F1F5F9",size=12)),
                           margin=dict(l=10,r=10,t=50,b=10), yaxis=dict(gridcolor="rgba(99,130,255,.05)"), showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     with col2:
@@ -2357,8 +2357,8 @@ def render_finance():
             hole=0.6, marker=dict(colors=["#6366f1","#06b6d4","#f59e0b","#8b5cf6","#ec4899","#10b981"]),
             textinfo="label+percent", textfont=dict(size=10),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#475569", height=320,
-                          title=dict(text="Cost Structure Breakdown", font=dict(color="#0F172A",size=13)),
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
+                          title=dict(text="Cost Structure Breakdown", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=9)))
         st.plotly_chart(fig, use_container_width=True)
 
@@ -2372,8 +2372,8 @@ def render_finance():
             marker_color=[CAT_CLR.get(c,"#6366f1") for c in cat_profit["Category"]], marker_line_width=0,
             text=[f"{v:.1f}%" for v in cat_profit["Margin %"]], textposition="outside",
         ))
-        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by Category", font=dict(color="#0F172A", size=13)),
-                          yaxis=dict(ticksuffix="%", gridcolor="rgba(15,23,42,.06)"), showlegend=False)
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by Category", font=dict(color="#F1F5F9", size=13)),
+                          yaxis=dict(ticksuffix="%", gridcolor="rgba(255,255,255,.05)"), showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
     with col2:
         city_profit = df.groupby("City").agg(Revenue=("Total Revenue","sum"), Profit=("Profit","sum")).reset_index()
@@ -2383,8 +2383,8 @@ def render_finance():
             marker_color=[CITY_CLR.get(c,"#6366f1") for c in city_profit["City"]], marker_line_width=0,
             text=[f"{v:.1f}%" for v in city_profit["Margin %"]], textposition="outside",
         ))
-        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by City", font=dict(color="#0F172A", size=13)),
-                          yaxis=dict(ticksuffix="%", gridcolor="rgba(15,23,42,.06)"), showlegend=False)
+        fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by City", font=dict(color="#F1F5F9", size=13)),
+                          yaxis=dict(ticksuffix="%", gridcolor="rgba(255,255,255,.05)"), showlegend=False)
         st.plotly_chart(fig, use_container_width=True)
 
     st.markdown('<div class="section-head">DELIVERY COST IMPACT</div>', unsafe_allow_html=True)
@@ -2412,9 +2412,9 @@ def render_ai_analyst():
 
     mode_badge = (
         '<span style="background:rgba(16,185,129,.2);border:1px solid rgba(16,185,129,.4);'
-        'border-radius:20px;padding:3px 10px;font-size:10px;color:#16A34A;margin-left:8px">✨ Claude AI Analyst</span>'
+        'border-radius:20px;padding:3px 10px;font-size:10px;color:#22C55E;margin-left:8px">✨ Claude AI Analyst</span>'
         if (use_ai_mode and api_key) else
-        '<span style="background:rgba(99,130,255,.08);border:1px solid #E2E8F0;'
+        '<span style="background:rgba(99,130,255,.08);border:1px solid #262B33;'
         'border-radius:20px;padding:3px 10px;font-size:10px;color:#64748B;margin-left:8px">🔧 Rule-based</span>'
     )
 
@@ -2425,11 +2425,11 @@ def render_ai_analyst():
           <div style="width:42px;height:42px;background:linear-gradient(135deg,#6366f1,#06b6d4);border-radius:12px;
                       display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
           <div>
-            <div style="font-size:15px;font-weight:700;color:#0F172A">BlinkBot {mode_badge}</div>
+            <div style="font-size:15px;font-weight:700;color:#F1F5F9">BlinkBot {mode_badge}</div>
             <div style="font-size:11px;color:#1D4DFF">Senior AI Business Analyst • Always Online</div>
           </div>
           <div style="margin-left:auto;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);
-                      border-radius:20px;padding:4px 10px;font-size:10px;color:#16A34A">● Live</div>
+                      border-radius:20px;padding:4px 10px;font-size:10px;color:#22C55E">● Live</div>
         </div>
         """, unsafe_allow_html=True)
     with bb_mem_col:
@@ -2442,14 +2442,14 @@ def render_ai_analyst():
         ]
         rows_html = "".join([
             f'<div style="display:flex;justify-content:space-between;padding:5px 0;'
-            f'border-bottom:1px solid rgba(15,23,42,.06)">'
+            f'border-bottom:1px solid rgba(255,255,255,.05)">'
             f'<span style="font-size:10px;color:#64748B">{lbl}</span>'
             f'<span style="font-size:10px;font-weight:600;color:#1D4DFF;font-family:monospace">{val}</span>'
             f'</div>' for lbl, val in mem_items
         ])
         topic_stack = " → ".join(_ui_mem.intent_stack) if _ui_mem.intent_stack else "—"
         st.markdown(f"""
-        <div style="background:#FFFFFF;border:1px solid #E2E8F0;box-shadow:0 1px 2px rgba(15,23,42,.04);border-radius:12px;padding:14px 16px;">
+        <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:14px 16px;">
           <div style="font-size:10px;font-weight:600;color:#1D4DFF;text-transform:uppercase;
                       letter-spacing:.08em;margin-bottom:8px">🧠 Conversation Memory</div>
           {rows_html}
@@ -2609,8 +2609,8 @@ def render_data_explorer():
 
     validation_ok = dq["missing_total"] == 0 and dq["dup_rows"] == 0
     status_txt = "✅ No missing values or duplicates detected in the current (filtered) view" if validation_ok else "⚠️ Data quality issues detected below"
-    status_clr = "#16A34A" if validation_ok else "#f59e0b"
-    st.markdown(f'<div style="margin:10px 0 20px;font-size:12px;font-weight:600;color:{status_clr};background:rgba(15,23,42,.06);padding:10px 14px;border-radius:8px">{status_txt}</div>', unsafe_allow_html=True)
+    status_clr = "#22C55E" if validation_ok else "#f59e0b"
+    st.markdown(f'<div style="margin:10px 0 20px;font-size:12px;font-weight:600;color:{status_clr};background:rgba(255,255,255,.05);padding:10px 14px;border-radius:8px">{status_txt}</div>', unsafe_allow_html=True)
 
     if dq["city_map"]:
         st.markdown('<div class="section-head">CITY NAME STANDARDIZATION APPLIED</div>', unsafe_allow_html=True)
