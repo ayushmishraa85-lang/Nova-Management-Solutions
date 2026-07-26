@@ -1,4 +1,4 @@
-# Zepto Sales Intelligence Dashboard v2.0
+# Nova Management Solutions
 
 **Stack:** FastAPI · Pandas · SciPy · scikit-learn · React 18 · Recharts · Vite
 
@@ -7,7 +7,7 @@
 ## Project Structure
 
 ```
-zepto_project/
+Novams_project/
 ├── data/
 │   └── zepto_sales_dataset.csv        ← Your dataset (external, decoupled)
 │
