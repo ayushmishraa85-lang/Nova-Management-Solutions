@@ -453,6 +453,238 @@ def data_quality_report(df: pd.DataFrame) -> dict:
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
+# ── DATA IMPORT & TRUST CENTER — HELPERS
+# (Additive only — none of the functions above/below this block are modified.
+#  Nothing here silently changes user data; every fix is opt-in via the UI.)
+# ══════════════════════════════════════════════════════════════════════════════════
+
+import difflib
+
+# Aliases map onto the ACTUAL columns NovaMS's calculations depend on
+# (REQUIRED_COLUMNS). Generic BI terms (Revenue, City, Product, Category,
+# Quantity, etc.) are normalized to those exact names; nothing is renamed
+# until the user confirms the import.
+_COLUMN_ALIASES: dict[str, list[str]] = {
+    "Product Name":   ["product", "item name", "item", "sku", "product title"],
+    "Category":       ["product category", "segment", "item category", "type"],
+    "City":           ["location", "region", "store city", "delivery city"],
+    "Original Price": ["mrp", "list price", "base price", "actual price"],
+    "Current Price":  ["selling price", "sale price", "final price", "price"],
+    "Discount":       ["discount %", "discount percentage", "discount pct"],
+    "Orders":         ["quantity", "units sold", "qty", "order count", "units"],
+    "Total Revenue":  ["revenue", "sales", "amount", "sales amount", "gross revenue", "net sales"],
+}
+
+
+def _normalize_colname(s: str) -> str:
+    return "".join(ch for ch in str(s).lower().strip() if ch.isalnum() or ch == " ").strip()
+
+
+def suggest_column_mapping(raw_columns: list[str]) -> dict:
+    """
+    For each REQUIRED_COLUMNS name not already present verbatim, look for a
+    raw column whose normalized name matches a known alias. Returns
+    {raw_column_name: canonical_name} SUGGESTIONS ONLY — nothing is applied.
+    """
+    norm_raw = {_normalize_colname(c): c for c in raw_columns}
+    suggestions = {}
+    for canonical in REQUIRED_COLUMNS:
+        if canonical in raw_columns:
+            continue
+        if _normalize_colname(canonical) in norm_raw:
+            suggestions[norm_raw[_normalize_colname(canonical)]] = canonical
+            continue
+        for alias in _COLUMN_ALIASES.get(canonical, []):
+            if alias in norm_raw:
+                suggestions[norm_raw[alias]] = canonical
+                break
+    return suggestions
+
+
+def dataset_compatibility_report(raw_df: pd.DataFrame, colmap: dict) -> dict:
+    """
+    Check whether raw_df (optionally with `colmap` renames applied on paper)
+    can power NovaMS. All REQUIRED_COLUMNS are critical — every existing
+    calculation (revenue, profit, margin, KPIs) depends on all 8 of them.
+    Optional columns only unlock the Delivery/Operations pages' extra detail.
+    """
+    effective_cols = set(raw_df.columns) | set(colmap.values())
+    required_detected = [c for c in REQUIRED_COLUMNS if c in effective_cols]
+    required_missing  = [c for c in REQUIRED_COLUMNS if c not in effective_cols]
+    optional_cols     = OPTIONAL_DELIVERY_COLS + OPTIONAL_OPERATIONS_COLS + ["Influencer Active"]
+    optional_detected = [c for c in optional_cols if c in effective_cols]
+    optional_missing  = [c for c in optional_cols if c not in effective_cols]
+    return dict(
+        required_detected=required_detected, required_missing=required_missing,
+        optional_detected=optional_detected, optional_missing=optional_missing,
+        can_import=len(required_missing) == 0,
+    )
+
+
+def compute_data_quality_findings(raw_df: pd.DataFrame) -> dict:
+    """Inspect raw_df (pre-clean) and report concrete, evidence-backed issues."""
+    findings = dict(
+        missing_by_col={}, dup_rows=0, empty_cols=[], negative_or_zero={},
+        city_aliases={}, similar_categories=[], total_rows=len(raw_df), total_cols=len(raw_df.columns),
+    )
+    if raw_df.empty:
+        return findings
+
+    missing = raw_df.isna().sum()
+    findings["missing_by_col"] = {c: int(v) for c, v in missing[missing > 0].items()}
+    findings["dup_rows"] = int(raw_df.duplicated().sum())
+    findings["empty_cols"] = [c for c in raw_df.columns if raw_df[c].isna().all()]
+
+    for col in ["Original Price", "Current Price", "Orders", "Total Revenue"]:
+        if col in raw_df.columns:
+            numeric = pd.to_numeric(raw_df[col], errors="coerce")
+            bad = int(((numeric <= 0) | numeric.isna()).sum())
+            if bad:
+                findings["negative_or_zero"][col] = bad
+
+    if "City" in raw_df.columns:
+        for city in raw_df["City"].dropna().unique():
+            canon = CITY_ALIASES.get(str(city).strip().lower())
+            if canon and canon != city:
+                findings["city_aliases"][city] = canon
+
+    if "Category" in raw_df.columns:
+        uniques = [str(c) for c in raw_df["Category"].dropna().unique()]
+        seen = set()
+        for c in uniques:
+            if c in seen:
+                continue
+            close = [m for m in difflib.get_close_matches(c, uniques, n=4, cutoff=0.82) if m != c]
+            if close:
+                group = sorted(set([c] + close))
+                seen.update(group)
+                findings["similar_categories"].append(group)
+
+    return findings
+
+
+def compute_trust_score(raw_df: pd.DataFrame, findings: dict, compat: dict) -> dict:
+    """
+    Blend completeness / validity / consistency / uniqueness into one 0-100
+    Data Trust Score, plus a plain-English explanation of the main issue.
+    """
+    n = max(1, findings["total_rows"] * max(1, findings["total_cols"]))
+    completeness = 1 - (sum(findings["missing_by_col"].values()) / n)
+    validity     = 1 - (sum(findings["negative_or_zero"].values()) / max(1, findings["total_rows"] * 4))
+    consistency  = 1 - (0.08 * len(findings["city_aliases"]) + 0.08 * len(findings["similar_categories"]))
+    uniqueness   = 1 - (findings["dup_rows"] / max(1, findings["total_rows"]))
+    completeness_req = 1.0 if compat["can_import"] else 0.4
+
+    weights = dict(completeness=.30, validity=.20, consistency=.15, uniqueness=.20, req=.15)
+    raw_score = (
+        completeness * weights["completeness"] + validity * weights["validity"] +
+        consistency * weights["consistency"] + uniqueness * weights["uniqueness"] +
+        completeness_req * weights["req"]
+    )
+    score = max(0, min(100, round(raw_score * 100)))
+
+    if score >= 90:   status = "Excellent"
+    elif score >= 75: status = "Good"
+    elif score >= 50: status = "Needs Review"
+    else:             status = "Poor Quality"
+
+    issues = []
+    if not compat["can_import"]:
+        issues.append((3, f"Missing required column(s): {', '.join(compat['required_missing'])}"))
+    if findings["dup_rows"]:
+        issues.append((2, f"{findings['dup_rows']} duplicate row(s) detected"))
+    if findings["missing_by_col"]:
+        worst_col = max(findings["missing_by_col"], key=findings["missing_by_col"].get)
+        pct = findings["missing_by_col"][worst_col] / max(1, findings["total_rows"]) * 100
+        issues.append((2, f"{pct:.1f}% missing values in the {worst_col} column"))
+    if findings["city_aliases"]:
+        issues.append((1, f"Inconsistent city naming ({', '.join(findings['city_aliases'].keys())})"))
+    if findings["similar_categories"]:
+        issues.append((1, "Similar category spellings detected — likely duplicates"))
+    if findings["negative_or_zero"]:
+        col, cnt = next(iter(findings["negative_or_zero"].items()))
+        issues.append((1, f"{cnt} row(s) with zero/negative values in {col}"))
+
+    issues.sort(key=lambda x: -x[0])
+    main_issue = issues[0][1] if issues else "No significant data quality issues detected."
+
+    return dict(score=score, status=status, main_issue=main_issue,
+                sub_scores=dict(completeness=completeness, validity=validity,
+                                 consistency=consistency, uniqueness=uniqueness))
+
+
+def generate_cleaning_suggestions(findings: dict, colmap: dict) -> list[dict]:
+    """Build the opt-in list of recommended fixes shown with checkboxes in the UI."""
+    suggestions = []
+    if colmap:
+        pretty = ", ".join(f"{k} → {v}" for k, v in colmap.items())
+        suggestions.append(dict(id="colmap", label=f"Map detected columns ({pretty})",
+                                 detail="Renames columns to the names NovaMS's calculations expect.", default=True))
+    if findings["dup_rows"]:
+        suggestions.append(dict(id="dupes", label=f"Remove {findings['dup_rows']} duplicate row(s)",
+                                 detail="Exact duplicate rows will be dropped, keeping the first occurrence.", default=True))
+    if findings["city_aliases"]:
+        pretty = ", ".join(f"{k}→{v}" for k, v in findings["city_aliases"].items())
+        suggestions.append(dict(id="city_std", label=f"Standardize city names ({pretty})",
+                                 detail="Merges known aliases so they aren't double-counted as separate cities.", default=True))
+    if findings["missing_by_col"]:
+        cols = ", ".join(findings["missing_by_col"].keys())
+        suggestions.append(dict(id="fill_missing", label=f"Fill missing values in: {cols}",
+                                 detail="Numeric columns are filled with the column median; text columns with the most common value.", default=True))
+    if findings["similar_categories"]:
+        for group in findings["similar_categories"]:
+            suggestions.append(dict(id=f"cat_std::{group[0]}", label=f"Merge similar categories: {', '.join(group)}",
+                                     detail="Groups near-identical spellings under the most frequent variant.", default=False))
+    return suggestions
+
+
+def apply_cleaning_suggestions(raw_df: pd.DataFrame, selected_ids: set, colmap: dict, findings: dict) -> tuple[pd.DataFrame, list]:
+    """Apply only the fixes the user explicitly checked. Returns (df, human-readable log)."""
+    df = raw_df.copy()
+    log = []
+
+    if "colmap" in selected_ids and colmap:
+        df = df.rename(columns=colmap)
+        log.append(f"Mapped columns: {', '.join(f'{k}→{v}' for k, v in colmap.items())}")
+
+    if "dupes" in selected_ids and findings["dup_rows"]:
+        before = len(df)
+        df = df.drop_duplicates()
+        log.append(f"Removed {before - len(df)} duplicate row(s)")
+
+    if "city_std" in selected_ids and "City" in df.columns:
+        df, applied = standardize_cities(df)
+        if applied:
+            log.append("Standardized city names: " + ", ".join(f"{k}→{v}" for k, v in applied.items()))
+
+    if "fill_missing" in selected_ids:
+        num_cols = df.select_dtypes(include="number").columns
+        if len(num_cols):
+            df[num_cols] = df[num_cols].fillna(df[num_cols].median())
+        for col in df.select_dtypes(include="object").columns:
+            if df[col].isna().any() and not df[col].mode().empty:
+                df[col] = df[col].fillna(df[col].mode()[0])
+        log.append("Filled missing values (median for numeric, most-common for text)")
+
+    for sid in selected_ids:
+        if sid.startswith("cat_std::") and "Category" in df.columns:
+            group_leader = sid.split("::", 1)[1]
+            group = next((g for g in findings["similar_categories"] if g[0] == group_leader), None)
+            if group:
+                target = df[df["Category"].isin(group)]["Category"].mode()
+                target = target.iloc[0] if not target.empty else group[0]
+                df["Category"] = df["Category"].replace({g: target for g in group})
+                log.append(f"Merged categories {group} → '{target}'")
+
+    return df, log
+
+
+def record_dataset_version(label: str, rows: int, note: str = ""):
+    versions = st.session_state.setdefault("_dataset_versions", [])
+    versions.append(dict(label=label, rows=rows, note=note))
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
 # ── CALCULATION FUNCTIONS  (pure — no Streamlit calls)
 # ══════════════════════════════════════════════════════════════════════════════════
 
@@ -1528,6 +1760,134 @@ def missing_data_notice(missing_cols: list[str], context: str):
     """, unsafe_allow_html=True)
 
 
+def render_data_trust_center():
+    """Full-page 'Data Import & Trust Center' — shown only while an uploaded
+    file is staged for review. Nothing here touches the active dashboard
+    dataset until the user explicitly clicks Import."""
+    raw_df   = st.session_state["_staged_raw_df"]
+    filename = st.session_state["_staged_filename"]
+
+    page_header("Data Import & Trust Center", f'Reviewing "{filename}" — nothing is applied until you import it')
+
+    size_kb = raw_df.memory_usage(deep=True).sum() / 1024
+    m1, m2, m3, m4 = st.columns(4)
+    with m1: kpi_card("File", filename)
+    with m2: kpi_card("Rows", f"{len(raw_df):,}")
+    with m3: kpi_card("Columns", f"{len(raw_df.columns)}")
+    with m4: kpi_card("Est. Size", f"{size_kb:,.0f} KB")
+
+    colmap        = suggest_column_mapping(list(raw_df.columns))
+    compat        = dataset_compatibility_report(raw_df, colmap)
+    strict_missing = [c for c in REQUIRED_COLUMNS if c not in raw_df.columns]
+    findings      = compute_data_quality_findings(raw_df)
+    trust         = compute_trust_score(raw_df, findings, compat)
+    status_clr    = {"Excellent": "#22C55E", "Good": "#22C55E", "Needs Review": "#D97706", "Poor Quality": "#EF4444"}[trust["status"]]
+
+    st.markdown('<div class="section-head">Data Trust Score</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="background:#14171C;border:1px solid #262B33;border-left:4px solid {status_clr};border-radius:10px;padding:18px 20px;margin-bottom:14px">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <div style="font-size:34px;font-weight:800;color:{status_clr}">{trust['score']}</div>
+        <div style="font-size:13px;color:#9AA4B2">/100 — <b style="color:{status_clr}">{trust['status']}</b></div>
+      </div>
+      <div style="margin-top:8px;font-size:12.5px;color:#9AA4B2">Main issue: {trust['main_issue']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    sc1, sc2, sc3, sc4 = st.columns(4)
+    for col, label, val in [
+        (sc1, "Completeness", trust["sub_scores"]["completeness"]), (sc2, "Validity", trust["sub_scores"]["validity"]),
+        (sc3, "Consistency",  trust["sub_scores"]["consistency"]),  (sc4, "Uniqueness", trust["sub_scores"]["uniqueness"]),
+    ]:
+        with col: kpi_card(label, f"{max(0, val) * 100:.0f}%")
+
+    st.markdown('<div class="section-head">Dataset Compatibility</div>', unsafe_allow_html=True)
+    if compat["can_import"]:
+        narrative(f"✓ All required columns detected{' (via smart mapping below)' if colmap else ''}. This dataset can fully power NovaMS's calculations.")
+    else:
+        st.markdown(
+            f'<div class="missing-box">✕ This dataset cannot fully support the current dashboard because '
+            f'{", ".join(compat["required_missing"])} column(s) are missing or unrecognized. '
+            f'Import stays disabled until they\'re present or mapped.</div>', unsafe_allow_html=True,
+        )
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.markdown(f"**✓ Required columns detected** ({len(compat['required_detected'])}/{len(REQUIRED_COLUMNS)})")
+        st.caption(", ".join(compat["required_detected"]) or "None")
+        if compat["required_missing"]:
+            st.markdown("**✕ Critical columns missing**")
+            st.caption(", ".join(compat["required_missing"]))
+    with cc2:
+        st.markdown(f"**⚠ Optional columns detected** ({len(compat['optional_detected'])}/{len(compat['optional_detected']) + len(compat['optional_missing'])})")
+        st.caption("Unlock extra detail on the Delivery Analytics and Operations pages — the dashboard works fine without them.")
+
+    st.markdown('<div class="section-head">Preview</div>', unsafe_allow_html=True)
+    st.dataframe(raw_df.head(20), use_container_width=True, height=320)
+    with st.expander(f"Columns & data types ({len(raw_df.columns)})"):
+        dt_df = raw_df.dtypes.astype(str).reset_index()
+        dt_df.columns = ["Column", "Type"]
+        st.dataframe(dt_df, use_container_width=True, height=min(300, 40 + 32 * len(dt_df)))
+
+    st.markdown('<div class="section-head">Smart Cleaning Suggestions</div>', unsafe_allow_html=True)
+    suggestions = generate_cleaning_suggestions(findings, colmap)
+    selected_ids = set()
+    if suggestions:
+        for s in suggestions:
+            if st.checkbox(s["label"], value=s["default"], key=f"fix_{s['id']}", help=s["detail"]):
+                selected_ids.add(s["id"])
+    else:
+        st.caption("No issues detected — this dataset looks clean.")
+
+    st.markdown('<div class="section-head">Import</div>', unsafe_allow_html=True)
+    mode = st.radio("Import mode", ["Replace Current Dataset", "Add to Current Dataset"], horizontal=True, key="import_mode")
+
+    b1, b2, b3 = st.columns(3)
+    with b1:
+        apply_clicked = st.button(
+            "Apply Recommended Fixes & Import", type="primary", use_container_width=True,
+            disabled=not compat["can_import"],
+        )
+    with b2:
+        raw_clicked = st.button("Import Without Fixing", use_container_width=True, disabled=bool(strict_missing))
+    with b3:
+        cancel_clicked = st.button("Cancel — Keep Current Dataset", use_container_width=True)
+
+    if apply_clicked or raw_clicked:
+        ids = selected_ids if apply_clicked else ({"colmap"} if colmap else set())
+        cleaned_raw, log = apply_cleaning_suggestions(raw_df, ids, colmap, findings)
+        try:
+            _validate_columns(cleaned_raw, filename)
+            cleaned = clean(cleaned_raw)
+        except ValueError as e:
+            st.error(f"❌ {e}")
+            return
+
+        if mode == "Add to Current Dataset":
+            base    = st.session_state.get("_active_df_raw")
+            base    = base if base is not None else load_default()
+            cleaned = pd.concat([base, cleaned], ignore_index=True)
+
+        new_trust = compute_trust_score(cleaned_raw, compute_data_quality_findings(cleaned_raw), compat)
+        st.session_state["_active_df_raw"] = cleaned
+        st.session_state["_active_dataset_meta"] = dict(
+            name=filename, source=("Cleaned Dataset" if ids else "User Uploaded Dataset"),
+            rows=len(cleaned), trust_score=new_trust["score"], status=new_trust["status"],
+        )
+        record_dataset_version(
+            label="Cleaned Import" if ids else "Original Upload",
+            rows=len(cleaned), note="; ".join(log) if log else "Imported as-is",
+        )
+        st.session_state["_show_trust_center"] = False
+        st.session_state["_staged_raw_df"]     = None
+        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS.")
+        st.rerun()
+
+    if cancel_clicked:
+        st.session_state["_show_trust_center"] = False
+        st.session_state["_staged_raw_df"]     = None
+        st.rerun()
+
+
 NAV_PAGES = [
     "Executive Overview",
     "Sales Analytics",
@@ -1559,29 +1919,74 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("#### 📂 Data Source")
+
+    _active_meta = st.session_state.get("_active_dataset_meta")
+    _status_clr  = {"Excellent": "#22C55E", "Good": "#22C55E", "Needs Review": "#D97706", "Poor Quality": "#EF4444"}
+    if _active_meta:
+        st.markdown(f"""
+        <div style="background:#14171C;border:1px solid #262B33;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;color:#6B7688;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Active Dataset</div>
+          <div style="font-size:13px;font-weight:700;color:#F1F5F9">{_active_meta['name']}</div>
+          <div style="font-size:10.5px;color:#9AA4B2;margin-top:2px">Source: {_active_meta['source']} · {_active_meta['rows']:,} rows</div>
+          <div style="margin-top:6px;font-size:10px;font-weight:700;color:{_status_clr.get(_active_meta['status'],'#9AA4B2')}">Trust Score: {_active_meta['trust_score']}/100 — {_active_meta['status']}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("↩ Revert to Demo Dataset", use_container_width=True, key="revert_demo_btn"):
+            st.session_state["_active_df_raw"] = None
+            st.session_state["_active_dataset_meta"] = None
+            record_dataset_version("Reverted to Demo Dataset", len(load_default()), "Manual revert")
+            st.rerun()
+    else:
+        st.markdown("""
+        <div style="background:#14171C;border:1px solid #262B33;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:9px;font-weight:700;color:#6B7688;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Active Dataset</div>
+          <div style="font-size:13px;font-weight:700;color:#F1F5F9">Demo Dataset</div>
+          <div style="font-size:10.5px;color:#9AA4B2;margin-top:2px">Source: Built-in sample · no file uploaded yet</div>
+        </div>
+        """, unsafe_allow_html=True)
+
     uploaded = st.file_uploader(
-        "Upload your CSV or Excel file",
+        "Drag and drop CSV or Excel here",
         type=["csv", "xlsx"],
-        help="Replace the default dataset. Accepts .csv or .xlsx exports "
-             "from Zepto, Blinkit, Swiggy Instamart, or similar platforms.",
+        help="Full preview, validation, and a Data Trust Score are shown before anything "
+             "is imported — nothing changes until you confirm.",
+        key="uploader_main",
     )
+
+    if uploaded is not None:
+        _sig = f"{uploaded.name}:{uploaded.size}"
+        if st.session_state.get("_staged_upload_sig") != _sig:
+            try:
+                _raw = _read_uploaded_dataframe(uploaded)
+                _raw.columns = [str(c).strip() for c in _raw.columns]
+                if _raw.empty:
+                    st.error("❌ The uploaded file is empty.")
+                else:
+                    st.session_state["_staged_raw_df"]     = _raw
+                    st.session_state["_staged_filename"]   = uploaded.name
+                    st.session_state["_staged_upload_sig"] = _sig
+                    st.session_state["_show_trust_center"] = True
+                    st.rerun()
+            except ValueError as e:
+                st.error(f"❌ {e}")
+            except Exception:
+                st.error("❌ This file does not contain readable data, or the format is not supported.")
+
+    if st.session_state.get("_dataset_versions"):
+        with st.expander(f"Dataset History ({len(st.session_state['_dataset_versions'])})"):
+            for i, v in enumerate(st.session_state["_dataset_versions"], 1):
+                note = f" · {v['note']}" if v.get("note") else ""
+                st.markdown(
+                    f"<div style='font-size:11px;color:#F1F5F9;font-weight:600;margin-top:4px'>Version {i} — {v['label']}</div>"
+                    f"<div style='font-size:10px;color:#6B7688'>{v['rows']:,} rows{note}</div>",
+                    unsafe_allow_html=True,
+                )
+
     st.markdown("---")
 
-    df_raw = load_default()
-    if uploaded is not None:
-        try:
-            df_raw = load_user_file(uploaded)
-            file_kind = "Excel" if uploaded.name.lower().endswith(".xlsx") else "CSV"
-            st.success(f"✅ Loaded {len(df_raw):,} rows from **{uploaded.name}** ({file_kind})")
-            city_map = st.session_state.get("_city_standardization", {})
-            if city_map:
-                st.info("🏙️ Standardized city names: " + ", ".join(f"{k}→{v}" for k, v in city_map.items()))
-        except ValueError as e:
-            st.error(f"❌ {e}")
-            st.info("↩️ Falling back to the default sample dataset until a valid file is uploaded.")
-        except Exception as e:
-            st.error(f"❌ Unexpected error while loading **{uploaded.name}**: {e}")
-            st.info("↩️ Falling back to the default sample dataset.")
+    df_raw = st.session_state.get("_active_df_raw")
+    if df_raw is None:
+        df_raw = load_default()
 
     st.markdown("#### 🔍 Filters")
     cities     = ["All"] + sorted(df_raw["City"].unique())
@@ -1669,6 +2074,18 @@ with st.sidebar:
       FastAPI · Pandas · SciPy · Streamlit
     </div>
     """, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── DATA IMPORT & TRUST CENTER GATE
+# While a freshly uploaded file is staged for review, show only the review
+# panel — the rest of the dashboard keeps running on the previously active
+# (or demo) dataset in the background, untouched, until the user imports.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+if st.session_state.get("_show_trust_center") and st.session_state.get("_staged_raw_df") is not None:
+    render_data_trust_center()
+    st.stop()
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
