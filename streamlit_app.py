@@ -685,6 +685,114 @@ def record_dataset_version(label: str, rows: int, note: str = ""):
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
+# ── POSTGRESQL PERSISTENCE  (optional — app works identically if not configured)
+# Datasets imported via the Data Import & Trust Center can be saved to a
+# Postgres database so they survive a browser refresh / new session, instead
+# of only living in st.session_state for the current visit.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+_DB_TABLE = "novams_datasets"
+
+
+def get_db_connection():
+    """
+    Returns a Streamlit SQL connection to the [connections.postgresql] entry
+    in secrets.toml, or None if it isn't configured / reachable. Every
+    caller must handle None — the rest of the app must keep working
+    exactly as before when no database is set up.
+    """
+    try:
+        return st.connection("postgresql", type="sql")
+    except Exception:
+        return None
+
+
+def _ensure_db_schema(conn) -> bool:
+    from sqlalchemy import text
+    try:
+        with conn.session as s:
+            s.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {_DB_TABLE} (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    rows INTEGER NOT NULL,
+                    trust_score INTEGER,
+                    status TEXT,
+                    saved_at TIMESTAMP DEFAULT NOW(),
+                    data_csv TEXT NOT NULL
+                );
+            """))
+            s.commit()
+        return True
+    except Exception as e:
+        st.session_state["_db_last_error"] = str(e)
+        return False
+
+
+def save_dataset_to_db(conn, df: pd.DataFrame, meta: dict) -> bool:
+    """Persist df + its metadata as one row (CSV text) in Postgres."""
+    from sqlalchemy import text
+    if not _ensure_db_schema(conn):
+        return False
+    try:
+        with conn.session as s:
+            s.execute(
+                text(f"""INSERT INTO {_DB_TABLE} (name, source, rows, trust_score, status, data_csv)
+                         VALUES (:name, :source, :rows, :trust_score, :status, :data_csv)"""),
+                dict(name=meta.get("name", "Untitled"), source=meta.get("source", "User Uploaded Dataset"),
+                     rows=int(len(df)), trust_score=meta.get("trust_score"), status=meta.get("status"),
+                     data_csv=df.to_csv(index=False)),
+            )
+            s.commit()
+        return True
+    except Exception as e:
+        st.session_state["_db_last_error"] = str(e)
+        return False
+
+
+def list_saved_datasets(conn) -> pd.DataFrame:
+    """Return the catalog of saved datasets (metadata only, not the data itself)."""
+    if not _ensure_db_schema(conn):
+        return pd.DataFrame()
+    try:
+        return conn.query(
+            f"SELECT id, name, source, rows, trust_score, status, saved_at "
+            f"FROM {_DB_TABLE} ORDER BY saved_at DESC;", ttl=0,
+        )
+    except Exception as e:
+        st.session_state["_db_last_error"] = str(e)
+        return pd.DataFrame()
+
+
+def load_dataset_from_db(conn, dataset_id: int) -> pd.DataFrame | None:
+    """Fetch one saved dataset's full data back out as a DataFrame."""
+    try:
+        result = conn.query(
+            f"SELECT data_csv FROM {_DB_TABLE} WHERE id = :id;",
+            params=dict(id=int(dataset_id)), ttl=0,
+        )
+        if result.empty:
+            return None
+        return pd.read_csv(io.StringIO(result.iloc[0]["data_csv"]))
+    except Exception as e:
+        st.session_state["_db_last_error"] = str(e)
+        return None
+
+
+def delete_dataset_from_db(conn, dataset_id: int) -> bool:
+    from sqlalchemy import text
+    try:
+        with conn.session as s:
+            s.execute(text(f"DELETE FROM {_DB_TABLE} WHERE id = :id;"), dict(id=int(dataset_id)))
+            s.commit()
+        return True
+    except Exception as e:
+        st.session_state["_db_last_error"] = str(e)
+        return False
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
 # ── CALCULATION FUNCTIONS  (pure — no Streamlit calls)
 # ══════════════════════════════════════════════════════════════════════════════════
 
@@ -1841,6 +1949,13 @@ def render_data_trust_center():
     st.markdown('<div class="section-head">Import</div>', unsafe_allow_html=True)
     mode = st.radio("Import mode", ["Replace Current Dataset", "Add to Current Dataset"], horizontal=True, key="import_mode")
 
+    _db_conn_for_save = get_db_connection()
+    save_to_db = False
+    if _db_conn_for_save is not None:
+        save_to_db = st.checkbox("💾 Also save this import to the database (persists across sessions)", value=False, key="save_to_db_checkbox")
+    else:
+        st.caption("💡 Connect a PostgreSQL database (see sidebar → Database) to save imports permanently.")
+
     b1, b2, b3 = st.columns(3)
     with b1:
         apply_clicked = st.button(
@@ -1868,18 +1983,27 @@ def render_data_trust_center():
             cleaned = pd.concat([base, cleaned], ignore_index=True)
 
         new_trust = compute_trust_score(cleaned_raw, compute_data_quality_findings(cleaned_raw), compat)
-        st.session_state["_active_df_raw"] = cleaned
-        st.session_state["_active_dataset_meta"] = dict(
+        meta = dict(
             name=filename, source=("Cleaned Dataset" if ids else "User Uploaded Dataset"),
             rows=len(cleaned), trust_score=new_trust["score"], status=new_trust["status"],
         )
+        st.session_state["_active_df_raw"] = cleaned
+        st.session_state["_active_dataset_meta"] = meta
         record_dataset_version(
             label="Cleaned Import" if ids else "Original Upload",
             rows=len(cleaned), note="; ".join(log) if log else "Imported as-is",
         )
+
+        db_note = ""
+        if save_to_db and _db_conn_for_save is not None:
+            if save_dataset_to_db(_db_conn_for_save, cleaned, meta):
+                db_note = " and saved to the database"
+            else:
+                db_note = " (database save failed — see sidebar → Database for the error)"
+
         st.session_state["_show_trust_center"] = False
         st.session_state["_staged_raw_df"]     = None
-        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS.")
+        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS{db_note}.")
         st.rerun()
 
     if cancel_clicked:
@@ -1981,6 +2105,50 @@ with st.sidebar:
                     f"<div style='font-size:10px;color:#6B7688'>{v['rows']:,} rows{note}</div>",
                     unsafe_allow_html=True,
                 )
+
+    with st.expander("🗄️ Database (PostgreSQL)"):
+        _db_conn = get_db_connection()
+        if _db_conn is None:
+            st.caption(
+                "Not connected. Add a `[connections.postgresql]` block to "
+                "`.streamlit/secrets.toml` to save datasets permanently across sessions."
+            )
+        else:
+            st.markdown(
+                '<span style="font-size:10px;font-weight:700;color:#22C55E">● Connected</span>',
+                unsafe_allow_html=True,
+            )
+            _saved = list_saved_datasets(_db_conn)
+            if _saved.empty:
+                st.caption("No datasets saved yet. Import a file, then use "
+                           "\"Save to Database\" in the Trust Center to persist it here.")
+            else:
+                for _, row in _saved.iterrows():
+                    st.markdown(
+                        f"<div style='font-size:11px;font-weight:600;color:#F1F5F9;margin-top:6px'>{row['name']}</div>"
+                        f"<div style='font-size:10px;color:#6B7688'>{row['rows']:,} rows · Trust {row['trust_score']}/100 · "
+                        f"saved {pd.to_datetime(row['saved_at']).strftime('%b %d, %H:%M')}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    lc1, lc2 = st.columns(2)
+                    with lc1:
+                        if st.button("Load", key=f"db_load_{row['id']}", use_container_width=True):
+                            loaded = load_dataset_from_db(_db_conn, row["id"])
+                            if loaded is not None:
+                                st.session_state["_active_df_raw"] = clean(loaded)
+                                st.session_state["_active_dataset_meta"] = dict(
+                                    name=row["name"], source=row["source"], rows=int(row["rows"]),
+                                    trust_score=int(row["trust_score"]) if pd.notna(row["trust_score"]) else 0,
+                                    status=row["status"],
+                                )
+                                record_dataset_version(f"Loaded from database: {row['name']}", int(row["rows"]))
+                                st.rerun()
+                    with lc2:
+                        if st.button("Delete", key=f"db_del_{row['id']}", use_container_width=True):
+                            delete_dataset_from_db(_db_conn, row["id"])
+                            st.rerun()
+            if st.session_state.get("_db_last_error"):
+                st.caption(f"⚠️ Last DB error: {st.session_state['_db_last_error']}")
 
     st.markdown("---")
 
