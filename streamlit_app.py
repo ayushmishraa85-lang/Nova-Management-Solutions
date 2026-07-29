@@ -194,6 +194,80 @@ section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
 """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════════
+# ── AUTHENTICATION
+# Simple, real credential check against st.secrets — no new database tables,
+# no new dependencies. Add a [auth] section to .streamlit/secrets.toml:
+#
+#   [auth]
+#   users = { ayush = "your-password", judge = "demo-pass" }
+#
+# If [auth] isn't configured at all (e.g. running locally without secrets
+# set up yet), a single fallback demo password is used instead, with a
+# visible on-screen warning so it's never silently insecure.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+_FALLBACK_AUTH_USER = "demo"
+_FALLBACK_AUTH_PASS = "novams2026"
+
+
+def _get_configured_users() -> dict:
+    try:
+        users = dict(st.secrets["auth"]["users"])
+        if users:
+            return users
+    except Exception:
+        pass
+    return {}
+
+
+def _render_login_screen():
+    configured_users = _get_configured_users()
+    using_fallback = not configured_users
+
+    st.markdown("""
+    <div style="max-width:380px;margin:8vh auto 0;text-align:center">
+      <div style="width:48px;height:48px;background:#1D4DFF;border-radius:11px;
+                  display:inline-flex;align-items:center;justify-content:center;
+                  font-size:22px;font-weight:700;color:#fff;margin-bottom:14px">N</div>
+      <h1 style="font-size:24px;font-weight:700;color:#F1F5F9;margin:0 0 4px">NovaMS</h1>
+      <p style="font-size:13px;color:#9AA4B2;margin:0 0 28px">Sign in to continue</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _, mid, _ = st.columns([1, 1.4, 1])
+    with mid:
+        if using_fallback:
+            st.markdown(
+                '<div class="missing-box">⚠️ No <code>[auth]</code> section found in '
+                '<code>secrets.toml</code> — using a fallback demo login '
+                f'(<code>{_FALLBACK_AUTH_USER}</code> / <code>{_FALLBACK_AUTH_PASS}</code>). '
+                'Set real credentials before sharing this deployment.</div>',
+                unsafe_allow_html=True,
+            )
+        with st.form("login_form"):
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign in", use_container_width=True, type="primary")
+
+        if submitted:
+            valid_users = configured_users if configured_users else {_FALLBACK_AUTH_USER: _FALLBACK_AUTH_PASS}
+            if username in valid_users and password == valid_users[username]:
+                st.session_state["_authenticated"] = True
+                st.session_state["_auth_user"] = username
+                st.rerun()
+            else:
+                st.error("❌ Incorrect username or password.")
+
+
+def require_login():
+    if not st.session_state.get("_authenticated"):
+        _render_login_screen()
+        st.stop()
+
+
+require_login()
+
+# ══════════════════════════════════════════════════════════════════════════════════
 # ── CONSTANTS
 # ══════════════════════════════════════════════════════════════════════════════════
 
@@ -2641,6 +2715,19 @@ with st.sidebar:
       <div class="tag">Nova Management Solutions</div>
     </div>
     """, unsafe_allow_html=True)
+
+    _auth_col1, _auth_col2 = st.columns([2, 1])
+    with _auth_col1:
+        st.markdown(
+            f'<div style="font-size:10.5px;color:#6B7688;padding-top:6px">Signed in as '
+            f'<b style="color:#9AA4B2">{st.session_state.get("_auth_user", "user")}</b></div>',
+            unsafe_allow_html=True,
+        )
+    with _auth_col2:
+        if st.button("Log out", key="logout_btn", use_container_width=True):
+            st.session_state["_authenticated"] = False
+            st.session_state["_auth_user"] = None
+            st.rerun()
 
     st.markdown("#### 🧭 Navigation")
     active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
