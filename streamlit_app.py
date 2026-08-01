@@ -2690,9 +2690,329 @@ def render_data_trust_center():
         st.rerun()
 
 
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── BOX PLOT ANALYSIS  (additive — new page, does not touch anything above)
+# Reuses the already-filtered `df` from the rest of NovaMS, so it stays in
+# sync with the sidebar filters, uploaded dataset, and everything else.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def _inject_boxplot_css():
+    st.markdown("""
+    <style>
+    @keyframes bpFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .bp-section { animation: bpFadeIn .45s ease-out; }
+    .bp-card {
+      background: var(--nova-card, #14171C);
+      border: 1px solid var(--nova-border, #262B33);
+      border-radius: 18px;
+      padding: 18px 20px;
+      transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .bp-card:hover {
+      border-color: rgba(29,77,255,.35);
+      box-shadow: 0 6px 22px rgba(29,77,255,.08);
+      transform: translateY(-1px);
+    }
+    .bp-title { font-size: 15px; font-weight: 700; color: var(--nova-ink, #F1F5F9); display:flex; align-items:center; gap:8px; }
+    .bp-subtitle { font-size: 12px; color: var(--nova-ink-soft, #9AA4B2); margin-top: 2px; margin-bottom: 14px; }
+    .bp-stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 10px; border-radius: 8px; margin-bottom: 5px;
+      background: rgba(255,255,255,.02);
+    }
+    .bp-stat-label { font-size: 11.5px; color: var(--nova-ink-soft, #9AA4B2); }
+    .bp-stat-value { font-size: 12px; font-weight: 700; font-family: 'SF Mono', monospace; }
+    .bp-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; }
+    .bp-blue  { background: #1D4DFF; }
+    .bp-green { background: #22C55E; }
+    .bp-red   { background: #EF4444; }
+    .bp-insight-line {
+      font-size: 12.5px; color: var(--nova-ink-soft, #9AA4B2); line-height: 1.75;
+      padding-left: 18px; position: relative; margin-bottom: 4px;
+    }
+    .bp-insight-line::before {
+      content: "✨"; position: absolute; left: 0; top: 0; font-size: 11px;
+    }
+    .bp-reco {
+      margin-top: 10px; padding: 10px 14px; border-radius: 10px;
+      background: rgba(29,77,255,.1); border-left: 3px solid #1D4DFF;
+      font-size: 12.5px; color: var(--nova-ink, #F1F5F9); line-height: 1.6;
+    }
+    .bp-badge {
+      display:inline-block; font-size:10px; font-weight:700; padding:2px 9px;
+      border-radius: 20px; background: rgba(29,77,255,.12); color:#1D4DFF; margin-left:8px;
+    }
+    div[data-testid="stDownloadButton"] button, .bp-section .stButton>button {
+      transition: transform .15s ease, box-shadow .15s ease;
+    }
+    div[data-testid="stDownloadButton"] button:hover, .bp-section .stButton>button:hover {
+      transform: translateY(-1px); box-shadow: 0 4px 14px rgba(29,77,255,.25);
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+def _bp_numeric_columns(df: pd.DataFrame) -> list[str]:
+    candidates = ["Total Revenue", "Profit", "Profit Margin", "Orders", "Discount",
+                  "Original Price", "Current Price", "Delivery Time", "Delivery Cost"]
+    present = [c for c in candidates if c in df.columns]
+    other_numeric = [c for c in df.select_dtypes(include="number").columns if c not in present]
+    return present + other_numeric
+
+
+def _bp_groupby_columns(df: pd.DataFrame) -> list[str]:
+    candidates = ["City", "Category", "Product Name", "Influencer Active",
+                  "Delivery Partner", "Price Tier", "Customer Segment"]
+    return [c for c in candidates if c in df.columns and df[c].nunique() > 1]
+
+
+def compute_boxplot_stats(series: pd.Series) -> dict | None:
+    """Overall distribution stats + 1.5xIQR outlier flags for one numeric column."""
+    s = pd.to_numeric(series, errors="coerce").dropna()
+    if len(s) == 0:
+        return None
+    q1, median, q3 = s.quantile([0.25, 0.5, 0.75])
+    iqr = q3 - q1
+    lo_fence = q1 - 1.5 * iqr
+    hi_fence = q3 + 1.5 * iqr
+    outlier_mask = (s < lo_fence) | (s > hi_fence)
+    return dict(
+        n=len(s), min=float(s.min()), max=float(s.max()), q1=float(q1), median=float(median),
+        q3=float(q3), mean=float(s.mean()), std=float(s.std(ddof=1)) if len(s) > 1 else 0.0,
+        variance=float(s.var(ddof=1)) if len(s) > 1 else 0.0, iqr=float(iqr),
+        lo_fence=float(lo_fence), hi_fence=float(hi_fence),
+        outlier_count=int(outlier_mask.sum()),
+        outlier_pct=float(outlier_mask.sum() / len(s) * 100),
+        skew=float(s.skew()) if len(s) > 2 else 0.0,
+        outlier_index=s[outlier_mask].index,
+    )
+
+
+def _generate_boxplot_insights(stats_d: dict, column: str, group_by: str | None,
+                                group_extreme: tuple | None) -> list[str]:
+    lines = []
+    lines.append(f"Median {column} is <b>{fmt(stats_d['median'])}</b>, representing the typical value.")
+    skew_word = ("positively skewed (right-tailed)" if stats_d["skew"] > 0.3 else
+                 "negatively skewed (left-tailed)" if stats_d["skew"] < -0.3 else "fairly symmetric")
+    lines.append(f"The distribution is <b>{skew_word}</b> (skewness={stats_d['skew']:.2f}).")
+    iqr_ratio = stats_d["iqr"] / stats_d["mean"] * 100 if stats_d["mean"] else 0
+    variability = "high" if iqr_ratio > 60 else "moderate" if iqr_ratio > 25 else "low"
+    lines.append(f"IQR of <b>{fmt(stats_d['iqr'])}</b> indicates <b>{variability} variability</b> around the median.")
+    if group_extreme:
+        g_name, g_std = group_extreme
+        lines.append(f"<b>{g_name}</b> shows the highest variation among {group_by.lower()} groups (std={fmt(g_std)}).")
+    lines.append(f"<b>{stats_d['outlier_pct']:.2f}%</b> of records ({stats_d['outlier_count']} rows) are statistical outliers (1.5×IQR rule).")
+    lines.append(f"Most values fall between <b>{fmt(stats_d['q1'])}</b> and <b>{fmt(stats_d['q3'])}</b> (the middle 50%).")
+    return lines
+
+
+def _build_box_figure(df_in: pd.DataFrame, column: str, group_by: str | None,
+                       show_only_outliers: bool, color_maps: dict) -> go.Figure:
+    fig = go.Figure()
+    color_map = color_maps.get(group_by, {}) if group_by else {}
+
+    if group_by:
+        counts = df_in.groupby(group_by)[column].count().sort_values(ascending=False)
+        order = counts.head(15).index  # cap at 15 groups so the chart stays readable
+        for i, g in enumerate(order):
+            vals = pd.to_numeric(df_in.loc[df_in[group_by] == g, column], errors="coerce").dropna()
+            if len(vals) == 0:
+                continue
+            clr = color_map.get(g, PAL[i % len(PAL)])
+            fig.add_trace(go.Box(
+                y=vals, name=str(g), marker_color=clr, line=dict(color=clr, width=1.5),
+                boxpoints="outliers" if not show_only_outliers else "all",
+                jitter=0.35, pointpos=0, marker=dict(size=4, opacity=0.75),
+                whiskerwidth=0.6,
+            ))
+    else:
+        vals = pd.to_numeric(df_in[column], errors="coerce").dropna()
+        fig.add_trace(go.Box(
+            y=vals, name=column, marker_color="#1D4DFF", line=dict(color="#1D4DFF", width=1.5),
+            boxpoints="outliers" if not show_only_outliers else "all",
+            jitter=0.35, pointpos=0, marker=dict(size=4, opacity=0.75), whiskerwidth=0.6,
+        ))
+
+    title = f"{column} Distribution" + (f" by {group_by}" if group_by else "")
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Inter", color="#9AA4B2", size=11),
+        title=dict(text=title, font=dict(color="#F1F5F9", size=14)),
+        height=440, margin=dict(l=10, r=10, t=50, b=10),
+        yaxis=dict(gridcolor="rgba(255,255,255,.06)", linecolor="rgba(255,255,255,.09)"),
+        xaxis=dict(gridcolor="rgba(255,255,255,.03)", linecolor="rgba(255,255,255,.09)"),
+        showlegend=False,
+    )
+    return fig
+
+
+def render_box_plot_analysis():
+    """Box Plot Analysis page — reuses the globally filtered `df`."""
+    _inject_boxplot_css()
+    st.markdown('<div class="bp-section">', unsafe_allow_html=True)
+
+    page_header("Box Plot Analysis", "Analyze data distribution, variability, and outliers")
+    narrative(
+        "<b>What this shows:</b> the spread, median, and outliers of any numeric metric — "
+        "optionally broken down by city, category, product, or influencer status. "
+        "<b>Why it matters:</b> outliers here often represent bulk orders, premium customers, "
+        "or data-entry errors worth a closer look."
+    )
+
+    numeric_cols = _bp_numeric_columns(df)
+    group_cols   = _bp_groupby_columns(df)
+
+    if not numeric_cols:
+        st.warning("No numeric columns available in the current (filtered) dataset.")
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
+
+    c1, c2, c3, c4 = st.columns([2, 2, 1.3, 1.5])
+    with c1:
+        column = st.selectbox("Numeric Column", numeric_cols, key="bp_numeric_col")
+    with c2:
+        group_choice = st.selectbox("Group By (Optional)", ["None"] + group_cols, key="bp_group_col")
+        group_by = None if group_choice == "None" else group_choice
+    with c3:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+        show_only_outliers = st.checkbox("☑ Show Only Outliers", key="bp_show_outliers")
+    with c4:
+        st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+        download_slot = st.empty()
+
+    # ── Validation ──────────────────────────────────────────────────────────
+    if column not in df.columns or not pd.api.types.is_numeric_dtype(pd.to_numeric(df[column], errors="coerce")):
+        st.error("⚠️ Selected column is not numeric.")
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
+
+    valid_n = pd.to_numeric(df[column], errors="coerce").dropna().shape[0]
+    if valid_n < 5:
+        st.warning("⚠️ Not enough data to generate a Box Plot (minimum 5 observations required).")
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
+
+    bp_stats = compute_boxplot_stats(df[column])
+
+    group_extreme = None
+    if group_by:
+        g_std = df.groupby(group_by)[column].std(ddof=1).dropna()
+        if len(g_std):
+            top_g = g_std.idxmax()
+            group_extreme = (top_g, float(g_std.loc[top_g]))
+
+    color_maps = {"City": CITY_CLR, "Category": CAT_CLR}
+    outlier_df = df.loc[df.index.intersection(bp_stats["outlier_index"])].copy()
+
+    left, right = st.columns([7, 3])
+
+    with left:
+        st.markdown('<div class="bp-card">', unsafe_allow_html=True)
+        fig = _build_box_figure(df, column, group_by, show_only_outliers, color_maps)
+        st.plotly_chart(fig, use_container_width=True, key="bp_main_chart")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with right:
+        st.markdown(f"""
+        <div class="bp-card">
+          <div class="bp-title">📈 Distribution Summary <span class="bp-badge">{column}</span></div>
+          <div class="bp-subtitle">Based on {bp_stats['n']:,} valid records</div>
+        """, unsafe_allow_html=True)
+
+        rows = [
+            ("bp-green", "Minimum",   fmt(bp_stats["min"])),
+            ("bp-green", "Q1 (25%)",  fmt(bp_stats["q1"])),
+            ("bp-blue",  "Median (50%)", fmt(bp_stats["median"])),
+            ("bp-green", "Q3 (75%)",  fmt(bp_stats["q3"])),
+            ("bp-green", "Maximum",   fmt(bp_stats["max"])),
+            ("bp-green", "Mean",      fmt(bp_stats["mean"])),
+            ("bp-green", "Std Deviation", fmt(bp_stats["std"])),
+            ("bp-green", "Variance",  fmt(bp_stats["variance"])),
+            ("bp-green", "IQR (Q3−Q1)", fmt(bp_stats["iqr"])),
+        ]
+        for dot, label, val in rows:
+            clr = "#1D4DFF" if dot == "bp-blue" else "#F1F5F9"
+            st.markdown(
+                f'<div class="bp-stat-row"><span class="bp-stat-label"><span class="bp-dot {dot}"></span>{label}</span>'
+                f'<span class="bp-stat-value" style="color:{clr}">{val}</span></div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            f'<div class="bp-stat-row" style="background:rgba(239,68,68,.08)">'
+            f'<span class="bp-stat-label"><span class="bp-dot bp-red"></span>Outliers Detected</span>'
+            f'<span class="bp-stat-value" style="color:#EF4444">{bp_stats["outlier_count"]}</span></div>'
+            f'<div class="bp-stat-row" style="background:rgba(239,68,68,.08)">'
+            f'<span class="bp-stat-label"><span class="bp-dot bp-red"></span>Outliers (%)</span>'
+            f'<span class="bp-stat-value" style="color:#EF4444">{bp_stats["outlier_pct"]:.2f}%</span></div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    csv_bytes = outlier_df.to_csv(index=False) if len(outlier_df) else "No outliers detected\n"
+    with download_slot:
+        st.download_button(
+            "⬇ Download Outliers (CSV)", csv_bytes,
+            file_name=f"novams_outliers_{column.replace(' ', '_').lower()}.csv",
+            mime="text/csv", use_container_width=True, disabled=len(outlier_df) == 0,
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    ic1, ic2 = st.columns([1, 1])
+    with ic1:
+        insight_lines = _generate_boxplot_insights(bp_stats, column, group_by, group_extreme)
+        st.markdown('<div class="bp-card">', unsafe_allow_html=True)
+        st.markdown('<div class="bp-title">✨ AI Insights</div><br>', unsafe_allow_html=True)
+        for line in insight_lines:
+            st.markdown(f'<div class="bp-insight-line">{line}</div>', unsafe_allow_html=True)
+        reco_subject = "high-value orders" if "Revenue" in column or "Profit" in column else f"unusual {column.lower()} values"
+        st.markdown(
+            f'<div class="bp-reco"><b>💡 Recommendation:</b> Investigate {reco_subject} for '
+            f'{"upselling opportunities" if "Revenue" in column or "Profit" in column else "data quality or process review"} — '
+            f'these {bp_stats["outlier_count"]} records sit outside the normal 1.5×IQR range.</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ic2:
+        st.markdown('<div class="bp-card">', unsafe_allow_html=True)
+        st.markdown(f'<div class="bp-title">🔎 Outlier Records <span class="bp-badge">{len(outlier_df)} total</span></div><br>',
+                    unsafe_allow_html=True)
+        if len(outlier_df) == 0:
+            st.markdown('<div style="font-size:12px;color:#64748B;text-align:center;padding:24px">No outliers detected in this view.</div>', unsafe_allow_html=True)
+        else:
+            preferred_cols = ["Product Name", "City", column, "Category", "Date"]
+            show_cols = [c for c in preferred_cols if c in outlier_df.columns]
+            if column not in show_cols:
+                show_cols.append(column)
+            preview = outlier_df[show_cols].sort_values(column, ascending=False).head(5).reset_index(drop=True)
+            preview.index = preview.index + 1
+            st.dataframe(preview, use_container_width=True, height=210)
+
+            if st.session_state.get("bp_view_all_outliers"):
+                st.markdown("**All outliers:**")
+                full = outlier_df[show_cols].sort_values(column, ascending=False).reset_index(drop=True)
+                st.dataframe(full, use_container_width=True, height=320)
+                if st.button("↑ Collapse", key="bp_collapse_outliers"):
+                    st.session_state["bp_view_all_outliers"] = False
+                    st.rerun()
+            else:
+                if st.button("View All Outliers →", key="bp_view_all_btn"):
+                    st.session_state["bp_view_all_outliers"] = True
+                    st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)  # close .bp-section
+
+
 NAV_PAGES = [
     "Executive Overview",
     "Sales Analytics",
+    "Box Plot Analysis",
     "Delivery Analytics",
     "Inventory Intelligence",
     "Operations",
@@ -3930,6 +4250,7 @@ def render_data_explorer():
 _PAGE_RENDERERS = {
     "Executive Overview":      render_executive_overview,
     "Sales Analytics":         render_sales_analytics,
+    "Box Plot Analysis":       render_box_plot_analysis,
     "Delivery Analytics":      render_delivery_analytics,
     "Inventory Intelligence":  render_inventory_intelligence,
     "Operations":              render_operations,
