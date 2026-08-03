@@ -42,6 +42,7 @@ footer   { visibility: hidden; }
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
 
 :root {
   --nova-ink:      #F1F5F9;
@@ -154,37 +155,242 @@ div[data-testid="metric-container"] {
   border-radius: 4px 10px 10px 4px; margin-bottom: 16px;
 }
 
-/* ── Sidebar — dark, disciplined, single accent ── */
+/* ══════════════════════════════════════════════════════════════════════
+   PREMIUM SIDEBAR — enterprise SaaS redesign (visual layer only).
+   Every underlying Streamlit widget (radio/selectbox/checkbox/toggle/
+   text_input/button) keeps its default DOM + key + behavior; only its
+   appearance is restyled here. No routing, session_state, or business
+   logic is touched by this block.
+   ══════════════════════════════════════════════════════════════════════ */
+
 section[data-testid="stSidebar"] {
-  background: var(--nova-sidebar);
-  border-right: 1px solid rgba(255,255,255,.06);
+  background: #0B1020 !important;
+  width: 290px !important;
+  min-width: 290px !important;
+  max-width: 290px !important;
+  border-right: 1px solid rgba(255,255,255,.08);
+  box-shadow: 4px 0 24px rgba(0,0,0,.35);
 }
-section[data-testid="stSidebar"] * { color: #CBD5E1; }
+section[data-testid="stSidebar"] > div { background: #0B1020 !important; }
+section[data-testid="stSidebar"] * { color: #F8FAFC; font-family: 'Inter', -apple-system, sans-serif; }
 section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 { color: #F8FAFC; }
 section[data-testid="stSidebar"] .stMarkdown p { color: #94A3B8; }
-section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.08); }
-section[data-testid="stSidebar"] input[type="radio"] { accent-color: var(--nova-blue); }
-section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
-  font-size: 10.5px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: .08em;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label {
-  padding: 7px 10px; border-radius: 6px; margin-bottom: 1px;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:hover { background: var(--nova-sidebar-2); }
-section[data-testid="stSidebar"] .stTextInput input,
-section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
-  background: var(--nova-sidebar-2); border-color: rgba(255,255,255,.1); color: #F1F5F9;
+section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.08); margin: 14px 0; }
+section[data-testid="stSidebar"] .block-container { padding: 18px 16px 20px !important; }
+
+/* Section labels (Navigation / Data Source / Filters / Settings / etc.) */
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
+section[data-testid="stSidebar"] h4 {
+  font-size: 10.5px !important; font-weight: 700 !important; color: #64748B !important;
+  text-transform: uppercase !important; letter-spacing: .1em !important;
+  margin-top: 4px;
 }
 
-.nav-brand { text-align:center; padding:10px 0 20px; }
+/* ── Brand section ───────────────────────────────────────────────────── */
+.nav-brand { text-align:center; padding:6px 0 18px; }
 .nav-brand .logo {
-  width:38px;height:38px;background:var(--nova-blue);
-  border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
-  font-size:18px;font-weight:700;color:#fff;margin-bottom:10px;
+  width:46px;height:46px;
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4DFF 55%, #1E3AE0 100%);
+  border-radius:13px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:21px;font-weight:800;color:#fff;margin-bottom:12px;
+  box-shadow: 0 8px 20px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.25);
 }
-.nav-brand .name { font-size:15px;font-weight:700;color:#F8FAFC;letter-spacing:-.01em; }
-.nav-brand .tag { font-size:10px;color:#64748B;margin-top:2px; letter-spacing:.06em; text-transform:uppercase; }
+.nav-brand .name { font-size:20px;font-weight:800;color:#F8FAFC;letter-spacing:-.02em; }
+.nav-brand .tag { font-size:11px;color:#94A3B8;margin-top:4px; font-weight:500; }
+.nav-brand .caption {
+  font-size:9.5px;color:#3B82F6;margin-top:6px; letter-spacing:.1em; text-transform:uppercase;
+  font-weight:700; opacity:.85;
+}
+
+/* ── Decorative search box ("Search modules... Ctrl+K") ─────────────── */
+section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input {
+  background: #111827 !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 12px !important;
+  color: #F8FAFC !important;
+  font-size: 12.5px !important;
+  padding: 10px 14px !important;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input::placeholder { color: #64748B !important; }
+section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input:focus {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.22) !important;
+}
+
+/* ── Navigation — turn the st.radio group into premium nav cards ────── */
+section[data-testid="stSidebar"] [role="radiogroup"] {
+  display: flex; flex-direction: column; gap: 3px;
+}
+/* Hide BaseWeb's native radio dot graphic — card look only */
+section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
+  display: none !important;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label {
+  position: relative;
+  display: flex; align-items: center;
+  height: 48px; padding: 0 14px; margin-bottom: 2px;
+  border-radius: 13px;
+  background: transparent;
+  color: #94A3B8;
+  font-weight: 500; font-size: 13.5px;
+  cursor: pointer;
+  transition: background-color .25s ease, transform .25s ease, color .25s ease, box-shadow .25s ease;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label * { color: inherit !important; font-weight: inherit !important; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+  background: rgba(255,255,255,.05);
+  color: #F8FAFC;
+  transform: translateX(3px);
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+  background: linear-gradient(90deg, #2563EB 0%, #1D4DFF 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 6px 18px rgba(37,99,235,.38);
+  font-weight: 700;
+}
+
+/* Icons (Material Symbols ligature via ::before — order matches NAV_PAGES) */
+section[data-testid="stSidebar"] [role="radiogroup"] label::before {
+  font-family: 'Material Symbols Outlined';
+  font-size: 19px; font-weight: 400; font-style: normal;
+  margin-right: 12px; flex-shrink: 0;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before  { content: "space_dashboard"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before  { content: "monitoring"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before  { content: "bar_chart"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before  { content: "local_shipping"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before  { content: "inventory_2"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before  { content: "engineering"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before  { content: "groups"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before  { content: "payments"; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before  { content: "smart_toy"; }
+
+/* Data Explorer (item 10) — icon via background-image so ::before stays
+   free for the "SYSTEM" section header on this item */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) {
+  padding-left: 44px;
+  background-repeat: no-repeat;
+  background-position: 14px center;
+  background-size: 19px 19px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):hover,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):has(input:checked) {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>");
+}
+
+/* Section headers — attached to the preceding/following item so no
+   pseudo-element ever needs to serve two purposes on the same label */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::after {
+  content: "ANALYTICS";
+  position: absolute; left: 14px; top: 100%; margin-top: 14px;
+  font-size: 10px; font-weight: 700; color: #475569;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1) { margin-bottom: 34px; }
+
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::after {
+  content: "AI MODULES";
+  position: absolute; left: 14px; top: 100%; margin-top: 14px;
+  font-size: 10px; font-weight: 700; color: #475569;
+  letter-spacing: .12em; text-transform: uppercase;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8) { margin-bottom: 34px; }
+
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::before {
+  content: "SYSTEM";
+  position: absolute; left: 14px; top: -22px;
+  font-size: 10px; font-weight: 700; color: #475569;
+  letter-spacing: .12em; text-transform: uppercase;
+  font-family: 'Inter', sans-serif; font-variation-settings: normal;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { margin-top: 20px; }
+
+/* "NEW" glow badge — AI Analyst (BlinkBot) item only */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::after {
+  content: "NEW";
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 8.5px; font-weight: 800; letter-spacing: .04em;
+  color: #fff; background: linear-gradient(90deg,#2563EB,#60A5FA);
+  padding: 2.5px 7px; border-radius: 20px;
+  box-shadow: 0 0 10px rgba(96,165,250,.7);
+  animation: novaBadgePulse 2.2s ease-in-out infinite;
+}
+@keyframes novaBadgePulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(96,165,250,.55); }
+  50%      { box-shadow: 0 0 14px rgba(96,165,250,.95); }
+}
+
+/* ── Inputs / selects inside the sidebar ─────────────────────────────── */
+section[data-testid="stSidebar"] .stTextInput input,
+section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
+  background: #111827 !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 10px !important;
+  color: #F8FAFC !important;
+}
+section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:focus-within > div,
+section[data-testid="stSidebar"] .stTextInput input:focus {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.2) !important;
+}
+section[data-testid="stSidebar"] .stCheckbox label, section[data-testid="stSidebar"] .stToggle label {
+  font-size: 12.5px; color: #CBD5E1;
+}
+
+/* ── Workspace status card ───────────────────────────────────────────── */
+.nova-workspace-card {
+  background: #111827;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 13px 15px;
+  margin: 6px 0 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.nova-workspace-card .ws-label {
+  font-size: 9.5px; font-weight: 700; color: #64748B;
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px;
+}
+.nova-workspace-card .ws-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: #E2E8F0; padding: 3px 0;
+}
+.nova-workspace-card .ws-dot {
+  display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#22C55E; margin-right:7px;
+  box-shadow: 0 0 6px rgba(34,197,94,.8);
+}
+
+/* ── User profile / logout footer ────────────────────────────────────── */
+.nova-profile-card {
+  display:flex; align-items:center; gap:11px;
+  background: #111827; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px; padding: 11px 13px; margin-bottom: 10px;
+}
+.nova-profile-avatar {
+  position:relative; width:36px; height:36px; border-radius:50%;
+  background: linear-gradient(135deg,#3B82F6,#8B5CF6);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:800; color:#fff; flex-shrink:0;
+}
+.nova-profile-avatar .dot {
+  position:absolute; bottom:-1px; right:-1px; width:9px; height:9px;
+  background:#22C55E; border:2px solid #111827; border-radius:50%;
+}
+.nova-profile-name { font-size:12.5px; font-weight:700; color:#F8FAFC; line-height:1.3; }
+.nova-profile-role  { font-size:10.5px; color:#94A3B8; }
+section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button {
+  width:100%; background: rgba(239,68,68,.1) !important;
+  border: 1px solid rgba(239,68,68,.25) !important; color:#F87171 !important;
+  border-radius: 10px !important; font-size: 12.5px !important; font-weight:600 !important;
+  transition: background-color .2s ease, transform .2s ease;
+}
+section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button:hover {
+  background: rgba(239,68,68,.18) !important; transform: translateY(-1px);
+}
 
 /* ── Global Streamlit primary accent (buttons, tabs, focus rings) ── */
 .stButton>button, [data-testid="stFormSubmitButton"] button, [data-testid="stBaseButton-primary"] {
@@ -3033,23 +3239,16 @@ with st.sidebar:
       <div class="logo">N</div>
       <div class="name">NovaMS</div>
       <div class="tag">Nova Management Solutions</div>
+      <div class="caption">Enterprise Analytics Platform</div>
     </div>
     """, unsafe_allow_html=True)
 
-    _auth_col1, _auth_col2 = st.columns([2, 1])
-    with _auth_col1:
-        st.markdown(
-            f'<div style="font-size:10.5px;color:#6B7688;padding-top:6px">Signed in as '
-            f'<b style="color:#9AA4B2">{st.session_state.get("_auth_user", "user")}</b></div>',
-            unsafe_allow_html=True,
+    with st.container(key="nova_search"):
+        st.text_input(
+            "Search modules", placeholder="Search modules... (Ctrl + K)",
+            label_visibility="collapsed", key="nova_search_input",
         )
-    with _auth_col2:
-        if st.button("Log out", key="logout_btn", use_container_width=True):
-            st.session_state["_authenticated"] = False
-            st.session_state["_auth_user"] = None
-            st.rerun()
 
-    st.markdown("#### 🧭 Navigation")
     active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
 
     st.markdown("---")
@@ -3247,9 +3446,44 @@ with st.sidebar:
         </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
+
+    # ── Workspace status card (reflects real, already-computed state —
+    # no new logic: reuses _active_meta and _db_conn from above) ──────────
+    _ws_dataset_label = _active_meta["name"] if _active_meta else "Demo Dataset"
+    _ws_mode_label    = "Custom Dataset" if _active_meta else "Demo Mode"
+    _ws_db_connected  = get_db_connection() is not None
+    st.markdown(f"""
+    <div class="nova-workspace-card">
+      <div class="ws-label">Workspace</div>
+      <div class="ws-row"><span><span class="ws-dot"></span>{_ws_mode_label}</span><span style="color:#64748B;font-size:10.5px">{_ws_dataset_label}</span></div>
+      <div class="ws-row"><span><span class="ws-dot" style="background:{'#22C55E' if _ws_db_connected else '#64748B'};box-shadow:0 0 6px {'rgba(34,197,94,.8)' if _ws_db_connected else 'transparent'}"></span>{'Connected' if _ws_db_connected else 'Local Session'}</span><span style="color:#64748B;font-size:10.5px">Database</span></div>
+      <div class="ws-row"><span><span class="ws-dot"></span>Live Status</span><span style="color:#22C55E;font-size:10.5px;font-weight:700">Active</span></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ── User profile + logout (same auth/session logic as before, just
+    # moved to the bottom of the sidebar and restyled) ─────────────────────
+    _profile_user  = st.session_state.get("_auth_user", "user")
+    _profile_initials = "".join([p[0] for p in _profile_user.replace(".", " ").replace("_", " ").split()][:2]).upper() or "U"
+    st.markdown(f"""
+    <div class="nova-profile-card">
+      <div class="nova-profile-avatar">{_profile_initials}<span class="dot"></span></div>
+      <div>
+        <div class="nova-profile-name">{_profile_user}</div>
+        <div class="nova-profile-role">Administrator</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.container(key="nova_logout"):
+        if st.button("Log out", key="logout_btn", use_container_width=True):
+            st.session_state["_authenticated"] = False
+            st.session_state["_auth_user"] = None
+            st.rerun()
+
     st.markdown("""
-    <div style="font-size:10px;color:#64748B;text-align:center">
-      Developed by <strong style="color:#1D4DFF">Ayush Mishra</strong><br>
+    <div style="font-size:9.5px;color:#475569;text-align:center;margin-top:12px">
+      Developed by <strong style="color:#3B82F6">Ayush Mishra</strong><br>
       FastAPI · Pandas · SciPy · Streamlit
     </div>
     """, unsafe_allow_html=True)
