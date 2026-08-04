@@ -253,6 +253,12 @@ section[data-testid="stSidebar"] [role="radiogroup"] label [data-baseweb="radio"
 section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
   display: none !important;
 }
+/* Extra fallback: hide every child of the label except the last one
+   (the text wrapper), regardless of exactly how Streamlit/BaseWeb nests
+   the radio circle in this version. */
+section[data-testid="stSidebar"] [role="radiogroup"] label > *:not(:last-child) {
+  display: none !important;
+}
 section[data-testid="stSidebar"] [role="radiogroup"] label {
   position: relative;
   display: flex; align-items: center;
@@ -299,9 +305,14 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::afte
   transition: background-color .15s ease;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:hover::after,
-section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::after {
+section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+/* Item 10 is the only item whose icon lives on ::after (its ::before holds
+   the "SYSTEM" header instead) — scoped separately so this never touches
+   item 9's ::after, which holds the "NEW" badge, not an icon. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):hover::after,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):has(input:checked)::after {
   background-color: var(--nova-blue);
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before {
