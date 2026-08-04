@@ -42,7 +42,6 @@ footer   { visibility: hidden; }
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block');
 
 :root {
   --nova-ink:      #F1F5F9;
@@ -170,14 +169,19 @@ section[data-testid="stSidebar"] {
   max-width: 290px !important;
   border-right: 1px solid rgba(255,255,255,.08);
   box-shadow: 4px 0 24px rgba(0,0,0,.35);
+  overflow-x: hidden !important;
 }
-section[data-testid="stSidebar"] > div { background: #0B1020 !important; }
-section[data-testid="stSidebar"] * { color: #F8FAFC; font-family: 'Inter', -apple-system, sans-serif; }
+section[data-testid="stSidebar"] > div { background: #0B1020 !important; overflow-x: hidden !important; }
+/* NOTE: color-only, no font-family here — the page already sets Inter
+   globally via html/body above, and overriding font-family a second time
+   here also clobbers Streamlit's own icon font (used by its native
+   sidebar-collapse control etc.), which is what caused the previous glitch. */
+section[data-testid="stSidebar"] * { color: #F8FAFC; }
 section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 { color: #F8FAFC; }
 section[data-testid="stSidebar"] .stMarkdown p { color: #94A3B8; }
 section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.08); margin: 14px 0; }
-section[data-testid="stSidebar"] .block-container { padding: 18px 16px 20px !important; }
+section[data-testid="stSidebar"] .block-container { padding: 18px 16px 20px !important; overflow-x: hidden; }
 
 /* Section labels (Navigation / Data Source / Filters / Settings / etc.) */
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
@@ -211,6 +215,8 @@ section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input {
   color: #F8FAFC !important;
   font-size: 12.5px !important;
   padding: 10px 14px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
 section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input::placeholder { color: #64748B !important; }
@@ -223,7 +229,11 @@ section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input:focus {
 section[data-testid="stSidebar"] [role="radiogroup"] {
   display: flex; flex-direction: column; gap: 3px;
 }
-/* Hide BaseWeb's native radio dot graphic — card look only */
+/* Hide BaseWeb's native radio dot graphic — card look only (targets the
+   stable data-baseweb wrapper first, with a positional fallback) */
+section[data-testid="stSidebar"] [role="radiogroup"] label [data-baseweb="radio"] {
+  display: none !important;
+}
 section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
   display: none !important;
 }
@@ -235,7 +245,7 @@ section[data-testid="stSidebar"] [role="radiogroup"] label {
   background: transparent;
   color: #94A3B8;
   font-weight: 500; font-size: 13.5px;
-  cursor: pointer;
+  cursor: pointer; box-sizing: border-box; overflow: visible;
   transition: background-color .25s ease, transform .25s ease, color .25s ease, box-shadow .25s ease;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label * { color: inherit !important; font-weight: inherit !important; }
@@ -251,35 +261,74 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
   font-weight: 700;
 }
 
-/* Icons (Material Symbols ligature via ::before — order matches NAV_PAGES) */
-section[data-testid="stSidebar"] [role="radiogroup"] label::before {
-  font-family: 'Material Symbols Outlined';
-  font-size: 19px; font-weight: 400; font-style: normal;
-  margin-right: 12px; flex-shrink: 0;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+/* Icons — inline-SVG CSS masks (font-independent, cannot silently fail
+   like a webfont ligature can). One shared base rule + per-item shape. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 19px; height: 19px; margin-right: 12px;
+  background-color: #94A3B8;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .2s ease;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before  { content: "space_dashboard"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before  { content: "monitoring"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before  { content: "bar_chart"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before  { content: "local_shipping"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before  { content: "inventory_2"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before  { content: "engineering"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before  { content: "groups"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before  { content: "payments"; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before  { content: "smart_toy"; }
-
-/* Data Explorer (item 10) — icon via background-image so ::before stays
-   free for the "SYSTEM" section header on this item */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) {
-  padding-left: 44px;
-  background-repeat: no-repeat;
-  background-position: 14px center;
-  background-size: 19px 19px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>");
+section[data-testid="stSidebar"] [role="radiogroup"] label:hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:hover::after,
+section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::after {
+  background-color: #FFFFFF;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):hover,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):has(input:checked) {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><ellipse cx='12' cy='5' rx='9' ry='3'/><path d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/><path d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/></svg>");
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='8' height='8' rx='2'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='8' height='8' rx='2'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='13' width='4' height='8' rx='1'/%3E%3Crect x='10' y='8' width='4' height='13' rx='1'/%3E%3Crect x='17' y='3' width='4' height='18' rx='1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='13' width='4' height='8' rx='1'/%3E%3Crect x='10' y='8' width='4' height='13' rx='1'/%3E%3Crect x='17' y='3' width='4' height='18' rx='1'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='6' width='6' height='11' rx='1.5'/%3E%3Crect x='11' y='2' width='2' height='4'/%3E%3Crect x='11' y='17' width='2' height='4'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='6' width='6' height='11' rx='1.5'/%3E%3Crect x='11' y='2' width='2' height='4'/%3E%3Crect x='11' y='17' width='2' height='4'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L21 7 V17 L12 22 L3 17 V7 Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L21 7 V17 L12 22 L3 17 V7 Z'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='7' rx='1.5'/%3E%3Crect x='3' y='13' width='18' height='7' rx='1.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='7' rx='1.5'/%3E%3Crect x='3' y='13' width='18' height='7' rx='1.5'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='6' cy='7' r='2.5'/%3E%3Crect x='9' y='6' width='12' height='2' rx='1'/%3E%3Ccircle cx='18' cy='14' r='2.5'/%3E%3Crect x='3' y='13' width='12' height='2' rx='1'/%3E%3Ccircle cx='9' cy='20' r='2.5'/%3E%3Crect x='12' y='19' width='9' height='2' rx='1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='6' cy='7' r='2.5'/%3E%3Crect x='9' y='6' width='12' height='2' rx='1'/%3E%3Ccircle cx='18' cy='14' r='2.5'/%3E%3Crect x='3' y='13' width='12' height='2' rx='1'/%3E%3Ccircle cx='9' cy='20' r='2.5'/%3E%3Crect x='12' y='19' width='9' height='2' rx='1'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='17' cy='8' r='3'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='17' cy='8' r='3'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { padding-left: 44px; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%); margin-right: 0;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
 }
 
 /* Section headers — attached to the preceding/following item so no
@@ -305,11 +354,13 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::befo
   position: absolute; left: 14px; top: -22px;
   font-size: 10px; font-weight: 700; color: #475569;
   letter-spacing: .12em; text-transform: uppercase;
-  font-family: 'Inter', sans-serif; font-variation-settings: normal;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { margin-top: 20px; }
 
 /* "NEW" glow badge — AI Analyst (BlinkBot) item only */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9) {
+  position: relative;
+}
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::after {
   content: "NEW";
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
