@@ -164,9 +164,6 @@ div[data-testid="metric-container"] {
 
 section[data-testid="stSidebar"] {
   background: var(--nova-sidebar) !important;
-  width: 290px !important;
-  min-width: 290px !important;
-  max-width: 290px !important;
   border-right: 1px solid var(--nova-border);
   overflow-x: hidden !important;
 }
