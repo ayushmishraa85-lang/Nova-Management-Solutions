@@ -163,73 +163,89 @@ div[data-testid="metric-container"] {
    ══════════════════════════════════════════════════════════════════════ */
 
 section[data-testid="stSidebar"] {
-  background: #0B1020 !important;
+  background: var(--nova-sidebar) !important;
   width: 290px !important;
   min-width: 290px !important;
   max-width: 290px !important;
-  border-right: 1px solid rgba(255,255,255,.08);
-  box-shadow: 4px 0 24px rgba(0,0,0,.35);
+  border-right: 1px solid var(--nova-border);
   overflow-x: hidden !important;
 }
-section[data-testid="stSidebar"] > div { background: #0B1020 !important; overflow-x: hidden !important; }
+section[data-testid="stSidebar"] > div { background: var(--nova-sidebar) !important; overflow-x: hidden !important; }
 /* NOTE: color-only, no font-family here — the page already sets Inter
    globally via html/body above, and overriding font-family a second time
    here also clobbers Streamlit's own icon font (used by its native
-   sidebar-collapse control etc.), which is what caused the previous glitch. */
-section[data-testid="stSidebar"] * { color: #F8FAFC; }
+   sidebar-collapse control etc.), which caused an earlier glitch. */
+section[data-testid="stSidebar"] * { color: var(--nova-ink); }
 section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 { color: #F8FAFC; }
-section[data-testid="stSidebar"] .stMarkdown p { color: #94A3B8; }
-section[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.08); margin: 14px 0; }
+section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 { color: var(--nova-ink); }
+section[data-testid="stSidebar"] .stMarkdown p { color: var(--nova-ink-soft); }
+section[data-testid="stSidebar"] hr { border-color: var(--nova-border); margin: 14px 0; }
 section[data-testid="stSidebar"] .block-container { padding: 18px 16px 20px !important; overflow-x: hidden; }
+
+/* Collapsed-sidebar expand control (the ">>" shown when the sidebar is
+   closed) — Streamlit renders this outside section[data-testid="stSidebar"],
+   so it needs its own small, quiet styling to match the theme instead of
+   floating as bare unstyled text. */
+[data-testid="collapsedControl"],
+[data-testid="stSidebarCollapsedControl"] {
+  background: var(--nova-card) !important;
+  border: 1px solid var(--nova-border) !important;
+  border-radius: 8px !important;
+  margin: 10px !important;
+}
+[data-testid="collapsedControl"] *, [data-testid="stSidebarCollapsedControl"] * {
+  color: var(--nova-ink-soft) !important;
+}
+[data-testid="collapsedControl"]:hover, [data-testid="stSidebarCollapsedControl"]:hover {
+  border-color: var(--nova-blue) !important;
+}
 
 /* Section labels (Navigation / Data Source / Filters / Settings / etc.) */
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p,
 section[data-testid="stSidebar"] h4 {
-  font-size: 10.5px !important; font-weight: 700 !important; color: #64748B !important;
-  text-transform: uppercase !important; letter-spacing: .1em !important;
+  font-size: 10.5px !important; font-weight: 700 !important; color: var(--nova-muted) !important;
+  text-transform: uppercase !important; letter-spacing: .08em !important;
   margin-top: 4px;
 }
 
-/* ── Brand section ───────────────────────────────────────────────────── */
+/* ── Brand section — flat, matches the rest of the dashboard's cards ─── */
 .nav-brand { text-align:center; padding:6px 0 18px; }
 .nav-brand .logo {
-  width:46px;height:46px;
-  background: linear-gradient(135deg, #3B82F6 0%, #1D4DFF 55%, #1E3AE0 100%);
-  border-radius:13px;display:inline-flex;align-items:center;justify-content:center;
-  font-size:21px;font-weight:800;color:#fff;margin-bottom:12px;
-  box-shadow: 0 8px 20px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  width:42px;height:42px;
+  background: var(--nova-blue);
+  border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:19px;font-weight:700;color:#fff;margin-bottom:12px;
 }
-.nav-brand .name { font-size:20px;font-weight:800;color:#F8FAFC;letter-spacing:-.02em; }
-.nav-brand .tag { font-size:11px;color:#94A3B8;margin-top:4px; font-weight:500; }
+.nav-brand .name { font-size:18px;font-weight:700;color:var(--nova-ink);letter-spacing:-.01em; }
+.nav-brand .tag { font-size:11px;color:var(--nova-ink-soft);margin-top:4px; font-weight:500; }
 .nav-brand .caption {
-  font-size:9.5px;color:#3B82F6;margin-top:6px; letter-spacing:.1em; text-transform:uppercase;
-  font-weight:700; opacity:.85;
+  font-size:9.5px;color:var(--nova-muted);margin-top:6px; letter-spacing:.08em; text-transform:uppercase;
+  font-weight:700;
 }
 
 /* ── Decorative search box ("Search modules... Ctrl+K") ─────────────── */
 section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input {
-  background: #111827 !important;
-  border: 1px solid rgba(255,255,255,.08) !important;
-  border-radius: 12px !important;
-  color: #F8FAFC !important;
+  background: var(--nova-sidebar-2) !important;
+  border: 1px solid var(--nova-border) !important;
+  border-radius: 8px !important;
+  color: var(--nova-ink) !important;
   font-size: 12.5px !important;
-  padding: 10px 14px !important;
+  padding: 9px 12px !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  transition: border-color .2s ease, box-shadow .2s ease;
+  transition: border-color .15s ease;
 }
-section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input::placeholder { color: #64748B !important; }
+section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input::placeholder { color: var(--nova-muted) !important; }
 section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input:focus {
-  border-color: #2563EB !important;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.22) !important;
+  border-color: var(--nova-blue) !important;
+  box-shadow: 0 0 0 2px var(--nova-blue-tint) !important;
 }
 
-/* ── Navigation — turn the st.radio group into premium nav cards ────── */
+/* ── Navigation — turn the st.radio group into quiet nav rows ────────── */
 section[data-testid="stSidebar"] [role="radiogroup"] {
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 2px;
 }
-/* Hide BaseWeb's native radio dot graphic — card look only (targets the
+/* Hide BaseWeb's native radio dot graphic — row look only (targets the
    stable data-baseweb wrapper first, with a positional fallback) */
 section[data-testid="stSidebar"] [role="radiogroup"] label [data-baseweb="radio"] {
   display: none !important;
@@ -240,25 +256,25 @@ section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
 section[data-testid="stSidebar"] [role="radiogroup"] label {
   position: relative;
   display: flex; align-items: center;
-  height: 48px; padding: 0 14px; margin-bottom: 2px;
-  border-radius: 13px;
+  height: 42px; padding: 0 12px; margin-bottom: 1px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
   background: transparent;
-  color: #94A3B8;
+  color: var(--nova-ink-soft);
   font-weight: 500; font-size: 13.5px;
   cursor: pointer; box-sizing: border-box; overflow: visible;
-  transition: background-color .25s ease, transform .25s ease, color .25s ease, box-shadow .25s ease;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label * { color: inherit !important; font-weight: inherit !important; }
 section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
-  background: rgba(255,255,255,.05);
-  color: #F8FAFC;
-  transform: translateX(3px);
+  background: var(--nova-sidebar-2);
+  color: var(--nova-ink);
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-  background: linear-gradient(90deg, #2563EB 0%, #1D4DFF 100%) !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 6px 18px rgba(37,99,235,.38);
-  font-weight: 700;
+  background: var(--nova-blue-tint) !important;
+  border-left-color: var(--nova-blue);
+  color: var(--nova-ink) !important;
+  font-weight: 600;
 }
 
 /* Icons — inline-SVG CSS masks (font-independent, cannot silently fail
@@ -275,18 +291,18 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::befor
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
   content: "";
   display: inline-block; flex-shrink: 0;
-  width: 19px; height: 19px; margin-right: 12px;
-  background-color: #94A3B8;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   -webkit-mask-position: center; mask-position: center;
   -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .2s ease;
+  transition: background-color .15s ease;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:hover::before,
 section[data-testid="stSidebar"] [role="radiogroup"] label:hover::after,
 section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::before,
 section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::after {
-  background-color: #FFFFFF;
+  background-color: var(--nova-blue);
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='8' height='8' rx='2'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2'/%3E%3C/svg%3E");
@@ -324,9 +340,9 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::befor
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { padding-left: 44px; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { padding-left: 42px; }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
-  position: absolute; left: 14px; top: 50%; transform: translateY(-50%); margin-right: 0;
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%); margin-right: 0;
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
 }
@@ -335,112 +351,105 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::afte
    pseudo-element ever needs to serve two purposes on the same label */
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::after {
   content: "ANALYTICS";
-  position: absolute; left: 14px; top: 100%; margin-top: 14px;
-  font-size: 10px; font-weight: 700; color: #475569;
-  letter-spacing: .12em; text-transform: uppercase;
+  position: absolute; left: 12px; top: 100%; margin-top: 12px;
+  font-size: 10px; font-weight: 700; color: var(--nova-muted);
+  letter-spacing: .1em; text-transform: uppercase;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1) { margin-bottom: 34px; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1) { margin-bottom: 30px; }
 
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::after {
   content: "AI MODULES";
-  position: absolute; left: 14px; top: 100%; margin-top: 14px;
-  font-size: 10px; font-weight: 700; color: #475569;
-  letter-spacing: .12em; text-transform: uppercase;
+  position: absolute; left: 12px; top: 100%; margin-top: 12px;
+  font-size: 10px; font-weight: 700; color: var(--nova-muted);
+  letter-spacing: .1em; text-transform: uppercase;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8) { margin-bottom: 34px; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8) { margin-bottom: 30px; }
 
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::before {
   content: "SYSTEM";
-  position: absolute; left: 14px; top: -22px;
-  font-size: 10px; font-weight: 700; color: #475569;
-  letter-spacing: .12em; text-transform: uppercase;
+  position: absolute; left: 12px; top: -20px;
+  font-size: 10px; font-weight: 700; color: var(--nova-muted);
+  letter-spacing: .1em; text-transform: uppercase;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { margin-top: 20px; }
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { margin-top: 18px; }
 
-/* "NEW" glow badge — AI Analyst (BlinkBot) item only */
+/* "NEW" badge — AI Analyst (BlinkBot) item only. Flat tint, matching the
+   .up/.down WoW-delta badges already used on the KPI cards elsewhere. */
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9) {
   position: relative;
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::after {
   content: "NEW";
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  font-size: 8.5px; font-weight: 800; letter-spacing: .04em;
-  color: #fff; background: linear-gradient(90deg,#2563EB,#60A5FA);
-  padding: 2.5px 7px; border-radius: 20px;
-  box-shadow: 0 0 10px rgba(96,165,250,.7);
-  animation: novaBadgePulse 2.2s ease-in-out infinite;
-}
-@keyframes novaBadgePulse {
-  0%, 100% { box-shadow: 0 0 6px rgba(96,165,250,.55); }
-  50%      { box-shadow: 0 0 14px rgba(96,165,250,.95); }
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  color: var(--nova-blue); background: var(--nova-blue-tint);
+  padding: 2px 6px; border-radius: 4px;
 }
 
 /* ── Inputs / selects inside the sidebar ─────────────────────────────── */
 section[data-testid="stSidebar"] .stTextInput input,
 section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
-  background: #111827 !important;
-  border: 1px solid rgba(255,255,255,.08) !important;
-  border-radius: 10px !important;
-  color: #F8FAFC !important;
+  background: var(--nova-sidebar-2) !important;
+  border: 1px solid var(--nova-border) !important;
+  border-radius: 8px !important;
+  color: var(--nova-ink) !important;
 }
 section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"]:focus-within > div,
 section[data-testid="stSidebar"] .stTextInput input:focus {
-  border-color: #2563EB !important;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.2) !important;
+  border-color: var(--nova-blue) !important;
+  box-shadow: 0 0 0 2px var(--nova-blue-tint) !important;
 }
 section[data-testid="stSidebar"] .stCheckbox label, section[data-testid="stSidebar"] .stToggle label {
-  font-size: 12.5px; color: #CBD5E1;
+  font-size: 12.5px; color: var(--nova-ink-soft);
 }
 
-/* ── Workspace status card ───────────────────────────────────────────── */
+/* ── Workspace status card — flat, same treatment as .insight-card ──── */
 .nova-workspace-card {
-  background: #111827;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  padding: 13px 15px;
-  margin: 6px 0 14px;
-  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  background: var(--nova-card);
+  border: 1px solid var(--nova-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 6px 0 12px;
 }
 .nova-workspace-card .ws-label {
-  font-size: 9.5px; font-weight: 700; color: #64748B;
-  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px;
+  font-size: 9.5px; font-weight: 700; color: var(--nova-muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px;
 }
 .nova-workspace-card .ws-row {
   display: flex; align-items: center; justify-content: space-between;
-  font-size: 12px; color: #E2E8F0; padding: 3px 0;
+  font-size: 12px; color: var(--nova-ink); padding: 3px 0;
 }
 .nova-workspace-card .ws-dot {
-  display:inline-block; width:7px; height:7px; border-radius:50%;
-  background:#22C55E; margin-right:7px;
-  box-shadow: 0 0 6px rgba(34,197,94,.8);
+  display:inline-block; width:6px; height:6px; border-radius:50%;
+  background: var(--nova-green); margin-right:7px;
 }
 
-/* ── User profile / logout footer ────────────────────────────────────── */
+/* ── User profile / logout footer — flat card, matches .insight-card ── */
 .nova-profile-card {
-  display:flex; align-items:center; gap:11px;
-  background: #111827; border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px; padding: 11px 13px; margin-bottom: 10px;
+  display:flex; align-items:center; gap:10px;
+  background: var(--nova-card); border: 1px solid var(--nova-border);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
 }
 .nova-profile-avatar {
-  position:relative; width:36px; height:36px; border-radius:50%;
-  background: linear-gradient(135deg,#3B82F6,#8B5CF6);
+  position:relative; width:32px; height:32px; border-radius:50%;
+  background: var(--nova-blue);
   display:flex; align-items:center; justify-content:center;
-  font-size:13px; font-weight:800; color:#fff; flex-shrink:0;
+  font-size:12px; font-weight:700; color:#fff; flex-shrink:0;
 }
 .nova-profile-avatar .dot {
-  position:absolute; bottom:-1px; right:-1px; width:9px; height:9px;
-  background:#22C55E; border:2px solid #111827; border-radius:50%;
+  position:absolute; bottom:-1px; right:-1px; width:8px; height:8px;
+  background: var(--nova-green); border:2px solid var(--nova-card); border-radius:50%;
 }
-.nova-profile-name { font-size:12.5px; font-weight:700; color:#F8FAFC; line-height:1.3; }
-.nova-profile-role  { font-size:10.5px; color:#94A3B8; }
+.nova-profile-name { font-size:12.5px; font-weight:600; color:var(--nova-ink); line-height:1.3; }
+.nova-profile-role  { font-size:10.5px; color:var(--nova-ink-soft); }
 section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button {
-  width:100%; background: rgba(239,68,68,.1) !important;
-  border: 1px solid rgba(239,68,68,.25) !important; color:#F87171 !important;
-  border-radius: 10px !important; font-size: 12.5px !important; font-weight:600 !important;
-  transition: background-color .2s ease, transform .2s ease;
+  width:100%; background: var(--nova-red-tint) !important;
+  border: 1px solid var(--nova-red-tint) !important; color:var(--nova-red) !important;
+  border-radius: 8px !important; font-size: 12.5px !important; font-weight:600 !important;
+  transition: border-color .15s ease;
 }
 section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button:hover {
-  background: rgba(239,68,68,.18) !important; transform: translateY(-1px);
+  border-color: var(--nova-red) !important;
 }
 
 /* ── Global Streamlit primary accent (buttons, tabs, focus rings) ── */
