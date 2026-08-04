@@ -184,20 +184,25 @@ section[data-testid="stSidebar"] .block-container { padding: 18px 16px 20px !imp
 
 /* Collapsed-sidebar expand control (the ">>" shown when the sidebar is
    closed) — Streamlit renders this outside section[data-testid="stSidebar"],
-   so it needs its own small, quiet styling to match the theme instead of
-   floating as bare unstyled text. */
-[data-testid="collapsedControl"],
-[data-testid="stSidebarCollapsedControl"] {
+   so it needs its own styling. Using a substring/case-insensitive attribute
+   match (rather than one exact testid) so this keeps working across
+   Streamlit versions that name this element differently. */
+[data-testid*="ollaps" i] {
   background: var(--nova-card) !important;
   border: 1px solid var(--nova-border) !important;
   border-radius: 8px !important;
   margin: 10px !important;
+  padding: 4px !important;
 }
-[data-testid="collapsedControl"] *, [data-testid="stSidebarCollapsedControl"] * {
+[data-testid*="ollaps" i] * {
   color: var(--nova-ink-soft) !important;
 }
-[data-testid="collapsedControl"]:hover, [data-testid="stSidebarCollapsedControl"]:hover {
+[data-testid*="ollaps" i]:hover {
   border-color: var(--nova-blue) !important;
+}
+[data-testid*="ollaps" i] button {
+  background: transparent !important;
+  border: none !important;
 }
 
 /* Section labels (Navigation / Data Source / Filters / Settings / etc.) */
@@ -221,24 +226,6 @@ section[data-testid="stSidebar"] h4 {
 .nav-brand .caption {
   font-size:9.5px;color:var(--nova-muted);margin-top:6px; letter-spacing:.08em; text-transform:uppercase;
   font-weight:700;
-}
-
-/* ── Decorative search box ("Search modules... Ctrl+K") ─────────────── */
-section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input {
-  background: var(--nova-sidebar-2) !important;
-  border: 1px solid var(--nova-border) !important;
-  border-radius: 8px !important;
-  color: var(--nova-ink) !important;
-  font-size: 12.5px !important;
-  padding: 9px 12px !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  transition: border-color .15s ease;
-}
-section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input::placeholder { color: var(--nova-muted) !important; }
-section[data-testid="stSidebar"] .st-key-nova_search .stTextInput input:focus {
-  border-color: var(--nova-blue) !important;
-  box-shadow: 0 0 0 2px var(--nova-blue-tint) !important;
 }
 
 /* ── Navigation — turn the st.radio group into quiet nav rows ────────── */
@@ -3313,12 +3300,6 @@ with st.sidebar:
       <div class="caption">Enterprise Analytics Platform</div>
     </div>
     """, unsafe_allow_html=True)
-
-    with st.container(key="nova_search"):
-        st.text_input(
-            "Search modules", placeholder="Search modules... (Ctrl + K)",
-            label_visibility="collapsed", key="nova_search_input",
-        )
 
     active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
 
