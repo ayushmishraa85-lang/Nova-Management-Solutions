@@ -91,18 +91,29 @@ p, span, div { -webkit-font-smoothing: antialiased; }
   background: var(--nova-card);
   border: 1px solid var(--nova-border);
   border-radius: 10px;
-  padding: 14px 16px 15px;
+  padding: 14px 16px 16px;
   height: 100%;
   box-sizing: border-box;
+  position: relative;
+  opacity: 0;
+  animation: novaKpiFadeIn .5s ease-out forwards;
+  animation-delay: var(--kpi-delay, 0s);
+}
+@keyframes novaKpiFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .nova-kpi-top {
-  display: flex; align-items: center; gap: 7px;
-  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 9px;
+  margin-bottom: 12px;
 }
-.nova-kpi-icon {
-  display: inline-flex; color: var(--nova-ink-soft); flex-shrink: 0;
+.nova-kpi-icon-chip {
+  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--chip-bg, var(--nova-blue-tint));
+  color: var(--chip-fg, var(--nova-blue));
 }
-.nova-kpi-icon svg { width: 15px; height: 15px; display: block; }
+.nova-kpi-icon-chip svg { width: 14px; height: 14px; display: block; }
 .nova-kpi-label {
   font-size: 10.5px; font-weight: 600; color: var(--nova-ink-soft);
   text-transform: uppercase; letter-spacing: .06em;
@@ -115,13 +126,53 @@ p, span, div { -webkit-font-smoothing: antialiased; }
 .nova-kpi-badge.down    { background: var(--nova-red-tint);   color: var(--nova-red); }
 .nova-kpi-badge.neutral { background: rgba(148,163,184,.12);  color: var(--nova-ink-soft); }
 .nova-kpi-value {
-  font-size: 22px; font-weight: 700; color: var(--nova-ink);
+  font-size: 21px; font-weight: 700; color: var(--nova-ink);
   line-height: 1.15; font-variant-numeric: tabular-nums;
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nova-kpi-sub {
   font-size: 11px; color: var(--nova-muted); line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.nova-kpi-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; flex-wrap: nowrap; }
+.nova-kpi-body .nova-kpi-text { flex: 1 1 auto; min-width: 0; }
+
+/* Real per-row-data sparkline, drawn in with a stroke animation */
+.nova-kpi-spark { width: 64px; height: 30px; flex: 0 0 64px; margin-bottom: 2px; }
+.nova-kpi-spark svg { width: 100%; height: 100%; display: block; }
+.nova-kpi-spark path.line {
+  animation: novaSparkDraw 1.1s cubic-bezier(.3,.8,.4,1) forwards;
+  animation-delay: var(--kpi-delay, 0s);
+}
+@keyframes novaSparkDraw { to { stroke-dashoffset: 0; } }
+
+/* Progress ring — filled to the real percentage, fades/scales in on load */
+.nova-kpi-ring-wrap {
+  position: relative; width: 48px; height: 48px; flex: 0 0 48px;
+  transform: scale(.85); opacity: 0;
+  animation: novaRingIn .55s cubic-bezier(.3,.8,.4,1) forwards;
+  animation-delay: calc(var(--kpi-delay, 0s) + .15s);
+}
+@keyframes novaRingIn { to { transform: scale(1); opacity: 1; } }
+.nova-kpi-ring {
+  width: 100%; height: 100%; border-radius: 50%;
+  background: conic-gradient(var(--ring-color, var(--nova-blue)) calc(var(--ring-pct, 0) * 1%), var(--nova-border) 0);
+  display: flex; align-items: center; justify-content: center;
+}
+.nova-kpi-ring-inner {
+  width: 70%; height: 70%; border-radius: 50%; background: var(--nova-card);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; color: var(--nova-ink);
+}
+
+/* Bottom accent bar — animates its width in from 0 on load */
+.nova-kpi-growbar {
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 0%;
+  background: var(--bar-color, var(--nova-blue));
+  animation: novaKpiGrow 1s cubic-bezier(.22,.85,.35,1) forwards;
+  animation-delay: calc(var(--kpi-delay, 0s) + .1s);
+}
+@keyframes novaKpiGrow { to { width: 100%; } }
 
 /* ── Section labels ── */
 .section-head {
@@ -2855,25 +2906,91 @@ _NOVA_KPI_ICONS = {
 }
 
 
+def _nova_sparkline_svg(values, color: str, width: int = 64, height: int = 30) -> str:
+    """Small inline-SVG sparkline built from real per-row values already in the
+    filtered dataframe — no synthetic/random data. Downsamples to <=24 points
+    for a clean line on larger datasets."""
+    vals = [float(v) for v in values if pd.notna(v)]
+    if len(vals) < 2:
+        return ""
+    max_pts = 24
+    if len(vals) > max_pts:
+        step = len(vals) / max_pts
+        vals = [vals[int(i * step)] for i in range(max_pts)]
+    lo, hi = min(vals), max(vals)
+    span = (hi - lo) or 1.0
+    n = len(vals)
+    pts = [
+        ((i / (n - 1)) * width, height - ((v - lo) / span) * (height - 6) - 3)
+        for i, v in enumerate(vals)
+    ]
+    line_d = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
+    area_d = f"{line_d} L {width} {height} L 0 {height} Z"
+    path_len = int(width * 1.5)
+    return (
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" preserveAspectRatio="none">'
+        f'<path d="{area_d}" fill="{color}" fill-opacity="0.12" stroke="none"/>'
+        f'<path class="line" d="{line_d}" fill="none" stroke="{color}" stroke-width="1.6" '
+        f'stroke-linecap="round" stroke-linejoin="round" '
+        f'style="stroke-dasharray:{path_len};stroke-dashoffset:{path_len}"/>'
+        f'</svg>'
+    )
+
+
+_NOVA_KPI_ACCENTS = {
+    # (chip background, chip foreground — CSS var(), safe in plain CSS)  (literal hex — used inside raw SVG attributes)
+    "blue":   ("var(--nova-blue-tint)",  "var(--nova-blue)",  "#1D4DFF"),
+    "green":  ("var(--nova-green-tint)", "var(--nova-green)", "#22C55E"),
+    "amber":  ("var(--nova-amber-tint)", "var(--nova-amber)", "#D97706"),
+    "red":    ("var(--nova-red-tint)",   "var(--nova-red)",   "#EF4444"),
+    "violet": ("rgba(139,92,246,.14)",   "#8b5cf6",            "#8b5cf6"),
+}
+
+
 def kpi_card_v2(label: str, value: str, icon: str, sub_lines: list[str] | None = None,
-                 badge_text: str = "", badge_kind: str = "neutral"):
+                 badge_text: str = "", badge_kind: str = "neutral", accent: str = "blue",
+                 spark_values=None, ring_pct: float | None = None, delay: float = 0.0):
     """
     Restrained, enterprise-style KPI tile for the Executive Overview page only:
-    icon + label -> optional status/delta badge -> large value -> supporting
-    context lines. No gradients, glow, or decorative graphics.
+    colored icon chip + label -> optional status/delta badge -> large value ->
+    supporting context, with an optional real-data sparkline or percentage
+    ring, and a subtle grow-in animation on load. No gradients/glow, and no
+    fabricated data — sparklines/rings only render when real values are given.
     """
-    icon_svg  = _NOVA_KPI_ICONS.get(icon, "")
+    icon_svg = _NOVA_KPI_ICONS.get(icon, "")
+    chip_bg, chip_fg, hex_color = _NOVA_KPI_ACCENTS.get(accent, _NOVA_KPI_ACCENTS["blue"])
     badge_html = f'<div class="nova-kpi-badge {badge_kind}">{badge_text}</div>' if badge_text else ""
     sub_html   = "".join(f'<div class="nova-kpi-sub">{s}</div>' for s in (sub_lines or []) if s)
+
+    visual_html = ""
+    if spark_values is not None:
+        spark_svg = _nova_sparkline_svg(spark_values, hex_color)
+        if spark_svg:
+            visual_html = f'<div class="nova-kpi-spark">{spark_svg}</div>'
+    if not visual_html and ring_pct is not None:
+        pct = max(0.0, min(100.0, ring_pct))
+        visual_html = f"""
+        <div class="nova-kpi-ring-wrap">
+          <div class="nova-kpi-ring" style="--ring-pct:{pct:.1f}; --ring-color:{hex_color}">
+            <div class="nova-kpi-ring-inner">{pct:.0f}%</div>
+          </div>
+        </div>"""
+
     st.markdown(f"""
-    <div class="nova-kpi-card">
+    <div class="nova-kpi-card" style="--kpi-delay:{delay:.2f}s">
       <div class="nova-kpi-top">
-        <span class="nova-kpi-icon">{icon_svg}</span>
+        <span class="nova-kpi-icon-chip" style="--chip-bg:{chip_bg}; --chip-fg:{chip_fg}">{icon_svg}</span>
         <span class="nova-kpi-label">{label}</span>
       </div>
       {badge_html}
-      <div class="nova-kpi-value">{value}</div>
-      {sub_html}
+      <div class="nova-kpi-body">
+        <div class="nova-kpi-text">
+          <div class="nova-kpi-value">{value}</div>
+          {sub_html}
+        </div>
+        {visual_html}
+      </div>
+      <div class="nova-kpi-growbar" style="--bar-color:{chip_fg}"></div>
     </div>""", unsafe_allow_html=True)
 
 
@@ -3697,34 +3814,42 @@ def render_executive_overview():
     c1,c2,c3,c4,c5,c6 = st.columns(6)
     with c1:
         kpi_card_v2("Total Revenue", fmt(kpis["total_rev"]), "trending-up",
-                    [f"σ = {fmt(kpis['rev_std'])}"], _rev_badge, "up" if _rev_up else "down")
+                    [f"σ = {fmt(kpis['rev_std'])}"], _rev_badge, "up" if _rev_up else "down",
+                    accent="blue", spark_values=df["Total Revenue"].values, delay=0.00)
     with c2:
         kpi_card_v2("Total Profit", fmt(kpis["total_profit"]), "activity",
-                    ["Net margin earnings"], _prof_badge, "up" if _prof_up else "down")
+                    ["Net margin earnings"], _prof_badge, "up" if _prof_up else "down",
+                    accent="green", spark_values=df["Profit"].values, delay=0.06)
     with c3:
         kpi_card_v2("Total Orders", f"{int(kpis['total_orders']):,}", "shopping-bag",
-                    ["Units sold"], _ord_badge, "up" if _ord_up else "down")
+                    ["Units sold"], _ord_badge, "up" if _ord_up else "down",
+                    accent="violet", spark_values=df["Orders"].values, delay=0.12)
     with c4:
         kpi_card_v2("Profit Margin", f"{kpis['margin']:.1f}%", "percent",
-                    ["Revenue to profit ratio"], _mgn_badge, "up" if _mgn_up else "down")
+                    ["Revenue to profit ratio"], _mgn_badge, "up" if _mgn_up else "down",
+                    accent="amber", spark_values=df["Profit Margin"].values, delay=0.18)
     with c5:
         kpi_card_v2("Avg Delivery Time", f"{avg_delivery:.1f} min", "clock",
-                    [f"OTD {delivery['otd_pct']:.0f}%"], f"● {_d_label}", _d_kind)
+                    [f"OTD {delivery['otd_pct']:.0f}%"], f"● {_d_label}", _d_kind,
+                    accent="red", delay=0.24)
     with c6:
         kpi_card_v2("Top Region", kpis["city_rev"].index[0] if len(kpis["city_rev"]) else "—", "map-pin",
                     [fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—",
-                     f"{_top_city_pct:.1f}% of Total" if len(kpis["city_rev"]) else ""])
+                     f"{_top_city_pct:.1f}% of Total" if len(kpis["city_rev"]) else ""],
+                    accent="blue", delay=0.30)
 
     c7,c8,c9 = st.columns(3)
     with c7:
         kpi_card_v2("Top Category", kpis["cat_rev"].index[0] if len(kpis["cat_rev"]) else "—", "tag",
-                    [fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—",
-                     f"{_top_cat_pct:.1f}% of Total" if len(kpis["cat_rev"]) else ""])
+                    [fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—"],
+                    accent="blue", ring_pct=_top_cat_pct, delay=0.36)
     with c8:
-        kpi_card_v2("Avg Order Value", fmt(kpis["aov"]), "receipt", ["Revenue per order"])
+        _aov_spark = (df["Total Revenue"] / df["Orders"].replace(0, np.nan)).dropna().values
+        kpi_card_v2("Avg Order Value", fmt(kpis["aov"]), "receipt", ["Revenue per order"],
+                    accent="violet", spark_values=_aov_spark, delay=0.42)
     with c9:
         kpi_card_v2("On-Time Delivery", f"{delivery['otd_pct']:.1f}%", "truck",
-                    ["Share of orders within promise"], f"● {_d_label}", _d_kind)
+                    [f"● {_d_label}"], accent="green", ring_pct=delivery["otd_pct"], delay=0.48)
 
     st.markdown("<br>", unsafe_allow_html=True)
     narrative(
