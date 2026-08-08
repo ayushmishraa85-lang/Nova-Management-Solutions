@@ -619,7 +619,8 @@ def require_login():
         st.stop()
 
 
-require_login()
+# Authentication temporarily disabled — uncomment the line below to re-enable.
+# require_login()
 
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── CONSTANTS
