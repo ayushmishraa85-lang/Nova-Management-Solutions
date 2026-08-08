@@ -91,7 +91,7 @@ p, span, div { -webkit-font-smoothing: antialiased; }
   background: var(--nova-card);
   border: 1px solid var(--nova-border);
   border-radius: 10px;
-  padding: 14px 16px 16px;
+  padding: 13px 14px 15px;
   height: 100%;
   box-sizing: border-box;
   position: relative;
@@ -104,19 +104,20 @@ p, span, div { -webkit-font-smoothing: antialiased; }
   to   { opacity: 1; transform: translateY(0); }
 }
 .nova-kpi-top {
-  display: flex; align-items: center; gap: 9px;
-  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 11px;
 }
 .nova-kpi-icon-chip {
-  width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--chip-bg, var(--nova-blue-tint));
   color: var(--chip-fg, var(--nova-blue));
 }
-.nova-kpi-icon-chip svg { width: 14px; height: 14px; display: block; }
+.nova-kpi-icon-chip svg { width: 13px; height: 13px; display: block; }
 .nova-kpi-label {
-  font-size: 10.5px; font-weight: 600; color: var(--nova-ink-soft);
-  text-transform: uppercase; letter-spacing: .06em;
+  font-size: 10px; font-weight: 600; color: var(--nova-ink-soft);
+  text-transform: uppercase; letter-spacing: .04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
 }
 .nova-kpi-badge {
   display: inline-block; font-size: 10.5px; font-weight: 600;
@@ -126,19 +127,19 @@ p, span, div { -webkit-font-smoothing: antialiased; }
 .nova-kpi-badge.down    { background: var(--nova-red-tint);   color: var(--nova-red); }
 .nova-kpi-badge.neutral { background: rgba(148,163,184,.12);  color: var(--nova-ink-soft); }
 .nova-kpi-value {
-  font-size: 21px; font-weight: 700; color: var(--nova-ink);
+  font-size: 19px; font-weight: 700; color: var(--nova-ink);
   line-height: 1.15; font-variant-numeric: tabular-nums;
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .nova-kpi-sub {
-  font-size: 11px; color: var(--nova-muted); line-height: 1.5;
+  font-size: 10.5px; color: var(--nova-muted); line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.nova-kpi-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; flex-wrap: nowrap; }
+.nova-kpi-body { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; flex-wrap: nowrap; }
 .nova-kpi-body .nova-kpi-text { flex: 1 1 auto; min-width: 0; }
 
 /* Real per-row-data sparkline, drawn in with a stroke animation */
-.nova-kpi-spark { width: 64px; height: 30px; flex: 0 0 64px; margin-bottom: 2px; }
+.nova-kpi-spark { width: 46px; height: 26px; flex: 0 0 46px; margin-bottom: 2px; }
 .nova-kpi-spark svg { width: 100%; height: 100%; display: block; }
 .nova-kpi-spark path.line {
   animation: novaSparkDraw 1.1s cubic-bezier(.3,.8,.4,1) forwards;
@@ -2906,7 +2907,7 @@ _NOVA_KPI_ICONS = {
 }
 
 
-def _nova_sparkline_svg(values, color: str, width: int = 64, height: int = 30) -> str:
+def _nova_sparkline_svg(values, color: str, width: int = 46, height: int = 26) -> str:
     """Small inline-SVG sparkline built from real per-row values already in the
     filtered dataframe — no synthetic/random data. Downsamples to <=24 points
     for a clean line on larger datasets."""
@@ -2969,12 +2970,12 @@ def kpi_card_v2(label: str, value: str, icon: str, sub_lines: list[str] | None =
             visual_html = f'<div class="nova-kpi-spark">{spark_svg}</div>'
     if not visual_html and ring_pct is not None:
         pct = max(0.0, min(100.0, ring_pct))
-        visual_html = f"""
-        <div class="nova-kpi-ring-wrap">
-          <div class="nova-kpi-ring" style="--ring-pct:{pct:.1f}; --ring-color:{hex_color}">
-            <div class="nova-kpi-ring-inner">{pct:.0f}%</div>
-          </div>
-        </div>"""
+        visual_html = (
+            f'<div class="nova-kpi-ring-wrap">'
+            f'<div class="nova-kpi-ring" style="--ring-pct:{pct:.1f}; --ring-color:{hex_color}">'
+            f'<div class="nova-kpi-ring-inner">{pct:.0f}%</div>'
+            f'</div></div>'
+        )
 
     st.markdown(f"""
     <div class="nova-kpi-card" style="--kpi-delay:{delay:.2f}s">
