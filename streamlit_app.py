@@ -82,6 +82,47 @@ p, span, div { -webkit-font-smoothing: antialiased; }
 .up   { background: var(--nova-green-tint); color: var(--nova-green); }
 .down { background: var(--nova-red-tint);   color: var(--nova-red); }
 
+/* ── Executive Overview KPI redesign — namespaced separately (nova-kpi-*)
+   from the .kpi-card system above so every other page's KPI tiles
+   (Data Explorer, Inventory, Operations, Finance, Trust Center, etc.)
+   are completely unaffected. Restrained, flat, no gradients/glow —
+   matches the existing narrative-box / insight-card visual language. ── */
+.nova-kpi-card {
+  background: var(--nova-card);
+  border: 1px solid var(--nova-border);
+  border-radius: 10px;
+  padding: 14px 16px 15px;
+  height: 100%;
+  box-sizing: border-box;
+}
+.nova-kpi-top {
+  display: flex; align-items: center; gap: 7px;
+  margin-bottom: 10px;
+}
+.nova-kpi-icon {
+  display: inline-flex; color: var(--nova-ink-soft); flex-shrink: 0;
+}
+.nova-kpi-icon svg { width: 15px; height: 15px; display: block; }
+.nova-kpi-label {
+  font-size: 10.5px; font-weight: 600; color: var(--nova-ink-soft);
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.nova-kpi-badge {
+  display: inline-block; font-size: 10.5px; font-weight: 600;
+  border-radius: 4px; padding: 2px 7px; margin-bottom: 8px;
+}
+.nova-kpi-badge.up      { background: var(--nova-green-tint); color: var(--nova-green); }
+.nova-kpi-badge.down    { background: var(--nova-red-tint);   color: var(--nova-red); }
+.nova-kpi-badge.neutral { background: rgba(148,163,184,.12);  color: var(--nova-ink-soft); }
+.nova-kpi-value {
+  font-size: 22px; font-weight: 700; color: var(--nova-ink);
+  line-height: 1.15; font-variant-numeric: tabular-nums;
+  margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.nova-kpi-sub {
+  font-size: 11px; color: var(--nova-muted); line-height: 1.5;
+}
+
 /* ── Section labels ── */
 .section-head {
   font-size: 11px; font-weight: 700; color: var(--nova-ink-soft);
@@ -2797,6 +2838,45 @@ def kpi_card(label: str, value: str, sub: str = "", delta: str = "", delta_posit
     </div>""", unsafe_allow_html=True)
 
 
+# ── Executive Overview KPI redesign — used ONLY by render_executive_overview().
+# Every other page keeps calling kpi_card() above, completely unchanged. ──────
+
+_NOVA_KPI_ICON_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'
+_NOVA_KPI_ICONS = {
+    "trending-up":  f'<svg {_NOVA_KPI_ICON_ATTRS}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    "activity":     f'<svg {_NOVA_KPI_ICON_ATTRS}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    "shopping-bag": f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+    "percent":      f'<svg {_NOVA_KPI_ICON_ATTRS}><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>',
+    "clock":        f'<svg {_NOVA_KPI_ICON_ATTRS}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    "map-pin":      f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+    "tag":          f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M20.59 13.41 11 3.83a2 2 0 0 0-1.41-.58H4a2 2 0 0 0-2 2v5.58c0 .53.21 1.04.59 1.42l9.58 9.59a2 2 0 0 0 2.82 0l6.6-6.6a2 2 0 0 0 0-2.83Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
+    "receipt":      f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M4 2h16v20l-2.5-1.5L15 22l-2.5-1.5L10 22l-2.5-1.5L5 22l-1-1V2Z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>',
+    "truck":        f'<svg {_NOVA_KPI_ICON_ATTRS}><rect x="1" y="3" width="14" height="13"/><path d="M15 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/></svg>',
+}
+
+
+def kpi_card_v2(label: str, value: str, icon: str, sub_lines: list[str] | None = None,
+                 badge_text: str = "", badge_kind: str = "neutral"):
+    """
+    Restrained, enterprise-style KPI tile for the Executive Overview page only:
+    icon + label -> optional status/delta badge -> large value -> supporting
+    context lines. No gradients, glow, or decorative graphics.
+    """
+    icon_svg  = _NOVA_KPI_ICONS.get(icon, "")
+    badge_html = f'<div class="nova-kpi-badge {badge_kind}">{badge_text}</div>' if badge_text else ""
+    sub_html   = "".join(f'<div class="nova-kpi-sub">{s}</div>' for s in (sub_lines or []) if s)
+    st.markdown(f"""
+    <div class="nova-kpi-card">
+      <div class="nova-kpi-top">
+        <span class="nova-kpi-icon">{icon_svg}</span>
+        <span class="nova-kpi-label">{label}</span>
+      </div>
+      {badge_html}
+      <div class="nova-kpi-value">{value}</div>
+      {sub_html}
+    </div>""", unsafe_allow_html=True)
+
+
 def missing_data_notice(missing_cols: list[str], context: str):
     st.markdown(f"""
     <div class="missing-box">
@@ -3595,19 +3675,56 @@ def render_executive_overview():
     page_header("Executive Overview", "Real-Time Business Snapshot · Developed by Ayush Mishra")
 
     st.markdown('<div class="section-head">Key Performance Indicators</div>', unsafe_allow_html=True)
-    c1,c2,c3,c4,c5,c6 = st.columns(6)
     avg_delivery = delivery["avg"]
-    with c1: kpi_card("Total Revenue", fmt(kpis["total_rev"]), f"σ = {fmt(kpis['rev_std'])}", "+12.4% WoW", True)
-    with c2: kpi_card("Total Profit", fmt(kpis["total_profit"]), "Net margin earnings", "+8.1% WoW", True)
-    with c3: kpi_card("Total Orders", f"{int(kpis['total_orders']):,}", "Units sold", "+5.3% WoW", True)
-    with c4: kpi_card("Profit Margin", f"{kpis['margin']:.1f}%", "Revenue to profit ratio", "+2.1 pts", True)
-    with c5: kpi_card("Avg Delivery Time", f"{avg_delivery:.1f} min", delivery["status"], f"OTD {delivery['otd_pct']:.0f}%", delivery['otd_pct'] >= 85)
-    with c6: kpi_card("Top Region", kpis["city_rev"].index[0] if len(kpis["city_rev"]) else "—", fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—")
+
+    # Delivery health status — reuses the exact 95% / 85% breakpoints already
+    # defined in compute_delivery_stats(), not new thresholds.
+    if delivery["otd_pct"] >= 95:
+        _d_kind, _d_label = "up", "Healthy"
+    elif delivery["otd_pct"] >= 85:
+        _d_kind, _d_label = "neutral", "Watch"
+    else:
+        _d_kind, _d_label = "down", "Critical"
+
+    _rev_badge, _rev_up   = wow["badges"]["total_rev"]
+    _prof_badge, _prof_up = wow["badges"]["total_profit"]
+    _ord_badge, _ord_up   = wow["badges"]["total_orders"]
+    _mgn_badge, _mgn_up   = wow["badges"]["margin"]
+
+    _top_city_pct = (kpis["city_rev"].iloc[0] / kpis["total_rev"] * 100) if kpis["total_rev"] and len(kpis["city_rev"]) else 0
+    _top_cat_pct  = (kpis["cat_rev"].iloc[0]  / kpis["total_rev"] * 100) if kpis["total_rev"] and len(kpis["cat_rev"])  else 0
+
+    c1,c2,c3,c4,c5,c6 = st.columns(6)
+    with c1:
+        kpi_card_v2("Total Revenue", fmt(kpis["total_rev"]), "trending-up",
+                    [f"σ = {fmt(kpis['rev_std'])}"], _rev_badge, "up" if _rev_up else "down")
+    with c2:
+        kpi_card_v2("Total Profit", fmt(kpis["total_profit"]), "activity",
+                    ["Net margin earnings"], _prof_badge, "up" if _prof_up else "down")
+    with c3:
+        kpi_card_v2("Total Orders", f"{int(kpis['total_orders']):,}", "shopping-bag",
+                    ["Units sold"], _ord_badge, "up" if _ord_up else "down")
+    with c4:
+        kpi_card_v2("Profit Margin", f"{kpis['margin']:.1f}%", "percent",
+                    ["Revenue to profit ratio"], _mgn_badge, "up" if _mgn_up else "down")
+    with c5:
+        kpi_card_v2("Avg Delivery Time", f"{avg_delivery:.1f} min", "clock",
+                    [f"OTD {delivery['otd_pct']:.0f}%"], f"● {_d_label}", _d_kind)
+    with c6:
+        kpi_card_v2("Top Region", kpis["city_rev"].index[0] if len(kpis["city_rev"]) else "—", "map-pin",
+                    [fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—",
+                     f"{_top_city_pct:.1f}% of Total" if len(kpis["city_rev"]) else ""])
 
     c7,c8,c9 = st.columns(3)
-    with c7: kpi_card("Top Category", kpis["cat_rev"].index[0] if len(kpis["cat_rev"]) else "—", fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—")
-    with c8: kpi_card("Avg Order Value", fmt(kpis["aov"]), "Revenue per order")
-    with c9: kpi_card("On-Time Delivery", f"{delivery['otd_pct']:.1f}%", delivery["status"])
+    with c7:
+        kpi_card_v2("Top Category", kpis["cat_rev"].index[0] if len(kpis["cat_rev"]) else "—", "tag",
+                    [fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—",
+                     f"{_top_cat_pct:.1f}% of Total" if len(kpis["cat_rev"]) else ""])
+    with c8:
+        kpi_card_v2("Avg Order Value", fmt(kpis["aov"]), "receipt", ["Revenue per order"])
+    with c9:
+        kpi_card_v2("On-Time Delivery", f"{delivery['otd_pct']:.1f}%", "truck",
+                    ["Share of orders within promise"], f"● {_d_label}", _d_kind)
 
     st.markdown("<br>", unsafe_allow_html=True)
     narrative(
