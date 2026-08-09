@@ -553,15 +553,6 @@ section[data-testid="stSidebar"] .stCheckbox label, section[data-testid="stSideb
 }
 .nova-profile-name { font-size:12.5px; font-weight:600; color:var(--nova-ink); line-height:1.3; }
 .nova-profile-role  { font-size:10.5px; color:var(--nova-ink-soft); }
-section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button {
-  width:100%; background: var(--nova-red-tint) !important;
-  border: 1px solid var(--nova-red-tint) !important; color:var(--nova-red) !important;
-  border-radius: 8px !important; font-size: 12.5px !important; font-weight:600 !important;
-  transition: border-color .15s ease;
-}
-section[data-testid="stSidebar"] .st-key-nova_logout .stButton>button:hover {
-  border-color: var(--nova-red) !important;
-}
 
 /* ── Global Streamlit primary accent (buttons, tabs, focus rings) ── */
 .stButton>button, [data-testid="stFormSubmitButton"] button, [data-testid="stBaseButton-primary"] {
@@ -4033,12 +4024,6 @@ with st.sidebar:
       </div>
     </div>
     """, unsafe_allow_html=True)
-
-    with st.container(key="nova_logout"):
-        if st.button("Log out", key="logout_btn", use_container_width=True):
-            st.session_state["_authenticated"] = False
-            st.session_state["_auth_user"] = None
-            st.rerun()
 
     st.markdown("""
     <div style="font-size:9.5px;color:#475569;text-align:center;margin-top:12px">
