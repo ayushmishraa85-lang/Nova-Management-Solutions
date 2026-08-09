@@ -474,6 +474,29 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::after
   padding: 2px 6px; border-radius: 4px;
 }
 
+/* Icon + section label for the new 11th nav item (Sales by Location) —
+   standalone rules only, so items 1-10 and all their existing icon/section
+   CSS above are completely untouched. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11) {
+  margin-top: 8px;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11)::before {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .15s ease;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11):hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11):has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+
 /* ── Inputs / selects inside the sidebar ─────────────────────────────── */
 section[data-testid="stSidebar"] .stTextInput input,
 section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
@@ -3044,29 +3067,11 @@ INDIA_CITY_COORDS = {
 }
 
 
-def render_sales_map(filtered_df: pd.DataFrame):
-    """
-    'Sales by Location' — a new, additive-only geographic bubble map.
-    Reuses the already-filtered `df` (so it automatically respects every
-    existing sidebar filter), fmt() for currency formatting, and CITY_CLR
-    for color consistency with the rest of NovaMS. No existing chart,
-    calculation, or filter logic is touched by this function.
-    """
-    st.markdown('<div class="section-head">Sales by Location</div>', unsafe_allow_html=True)
-
-    if filtered_df is None or filtered_df.empty or "City" not in filtered_df.columns:
-        st.info("No location data available for the current filter selection.")
-        return
-
-    metric_choice = st.selectbox(
-        "Map metric", ["Revenue", "Orders", "Profit"],
-        key="sales_map_metric",
-    )
-    metric_col = {"Revenue": "Total Revenue", "Orders": "Orders", "Profit": "Profit"}[metric_choice]
-    if metric_col not in filtered_df.columns:
-        st.info(f"'{metric_choice}' isn't available in the current dataset.")
-        return
-
+def _aggregate_city_metrics(filtered_df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Group the already-filtered df by City into Revenue/Orders/Profit/Margin,
+    attach lat/lon from INDIA_CITY_COORDS, and split out any city names that
+    can't be geocoded (returned separately so the page can note them without
+    ever crashing on unknown/uncleaned city names)."""
     agg_cols = [c for c in ["Total Revenue", "Orders", "Profit"] if c in filtered_df.columns]
     agg = filtered_df.groupby("City")[agg_cols].sum().reset_index()
     if "Profit Margin" in filtered_df.columns:
@@ -3074,24 +3079,36 @@ def render_sales_map(filtered_df: pd.DataFrame):
             filtered_df.groupby("City")["Profit Margin"].mean().reset_index(),
             on="City", how="left",
         )
-
     agg["_lat"] = agg["City"].map(lambda c: INDIA_CITY_COORDS.get(c, (None, None))[0])
     agg["_lon"] = agg["City"].map(lambda c: INDIA_CITY_COORDS.get(c, (None, None))[1])
     mappable = agg.dropna(subset=["_lat", "_lon"]).copy()
     unmapped = agg[agg["_lat"].isna()]["City"].tolist()
+    return mappable, unmapped
 
-    if mappable.empty:
-        st.info(
-            "None of the cities in the current filter could be plotted on the map — their "
-            "names aren't recognized as known Indian city locations yet."
-        )
-        return
+
+def _build_sales_map_figure(mappable: pd.DataFrame, metric_col: str, metric_choice: str) -> go.Figure:
+    """Builds the Scattergeo bubble map. Bubbles are colored by performance
+    rank on the selected metric — green for the top city, red for the
+    weakest, blue for everything in between — matching the same
+    best/middle/worst color language _chart_city_ranking() already uses
+    elsewhere in NovaMS, so the map reads consistently with the rest of the
+    dashboard at a glance."""
+    ranked = mappable.sort_values(metric_col, ascending=False).reset_index(drop=True)
+    rank_of = {row["City"]: i for i, row in ranked.iterrows()}
+    n = len(ranked)
+
+    def _rank_color(city: str) -> str:
+        r = rank_of.get(city, 0)
+        if r == 0:          return "#22C55E"   # top performer
+        if r == n - 1 and n > 1: return "#EF4444"   # weakest
+        return "#1D4DFF"                        # everyone else
 
     max_val  = float(mappable[metric_col].clip(lower=0).max()) or 1.0
-    size_ref = 2.0 * max_val / (46.0 ** 2)  # keeps the largest bubble ~46px, scales the rest proportionally
+    size_ref = 2.0 * max_val / (50.0 ** 2)  # keeps the largest bubble ~50px, scales the rest proportionally
 
     def _hover_line(row) -> str:
-        parts = [f"<b>{row['City']}</b>"]
+        rank = rank_of.get(row["City"], 0) + 1
+        parts = [f"<b>#{rank} {row['City']}</b>"]
         if "Total Revenue" in mappable.columns:
             parts.append(f"Revenue: {fmt(row['Total Revenue'])}")
         if "Orders" in mappable.columns:
@@ -3104,37 +3121,152 @@ def render_sales_map(filtered_df: pd.DataFrame):
 
     hover_text = [_hover_line(row) for _, row in mappable.iterrows()]
 
-    fig = go.Figure(go.Scattergeo(
+    fig = go.Figure()
+
+    # Soft outer glow ring beneath each bubble — same marker positions at a
+    # larger, translucent size, purely decorative, adds map depth without
+    # any new data or extra hover targets (hoverinfo is disabled on this trace).
+    fig.add_trace(go.Scattergeo(
+        lat=mappable["_lat"], lon=mappable["_lon"], hoverinfo="skip", mode="markers",
+        marker=dict(
+            size=mappable[metric_col].clip(lower=0), sizemode="area",
+            sizeref=size_ref * 0.55, sizemin=10,
+            color=[_rank_color(c) for c in mappable["City"]],
+            opacity=0.18, line=dict(width=0),
+        ),
+        showlegend=False,
+    ))
+    fig.add_trace(go.Scattergeo(
         lat=mappable["_lat"], lon=mappable["_lon"],
-        text=hover_text, hoverinfo="text",
-        mode="markers",
+        text=hover_text, hoverinfo="text", hoverlabel=dict(bgcolor="#14171C", font=dict(color="#F1F5F9", size=12)),
+        mode="markers+text",
+        textposition="top center",
+        texttemplate=[f"<b>{c}</b>" for c in mappable["City"]],
+        textfont=dict(size=10, color="#F1F5F9", family="Inter"),
         marker=dict(
             size=mappable[metric_col].clip(lower=0),
-            sizemode="area", sizeref=size_ref, sizemin=6,
-            color=[CITY_CLR.get(c, "#1D4DFF") for c in mappable["City"]],
-            line=dict(width=1, color="rgba(255,255,255,.35)"),
-            opacity=0.85,
+            sizemode="area", sizeref=size_ref, sizemin=8,
+            color=[_rank_color(c) for c in mappable["City"]],
+            line=dict(width=1.5, color="rgba(255,255,255,.45)"),
+            opacity=0.92,
         ),
+        showlegend=False,
     ))
+
     fig.update_geos(
         scope="asia", resolution=50,
         lataxis_range=[6, 36], lonaxis_range=[66, 98],
-        showcountries=True, countrycolor="rgba(255,255,255,.15)",
-        showsubunits=True, subunitcolor="rgba(255,255,255,.08)",
+        showcountries=True, countrycolor="rgba(255,255,255,.18)",
+        showsubunits=True, subunitcolor="rgba(255,255,255,.10)",
         showland=True, landcolor="#14171C",
         showocean=True, oceancolor="#0A0C0F",
-        showlakes=False, bgcolor="rgba(0,0,0,0)",
+        showlakes=False, showcoastlines=True, coastlinecolor="rgba(255,255,255,.12)",
+        bgcolor="rgba(0,0,0,0)",
     )
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color="#9AA4B2", size=11),
-        margin=dict(l=0, r=0, t=10, b=0), height=440,
+        margin=dict(l=0, r=0, t=10, b=0), height=520,
         title=dict(text=f"{metric_choice} by City", font=dict(color="#F1F5F9", size=12)),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    return fig
 
-    if unmapped:
-        st.caption(f"Not shown on map (unrecognized location): {', '.join(unmapped)}")
+
+def render_sales_by_location():
+    """
+    Dedicated 'Sales by Location' page — its own nav item, separate from
+    every other page. Reuses the already-filtered `df` (so every existing
+    sidebar filter applies automatically), fmt(), CITY_CLR-style rank
+    coloring, page_header()/narrative()/kpi_card() for visual consistency,
+    and INDIA_CITY_COORDS / the map builders above. No existing page,
+    calculation, filter, or chart is touched by this function.
+    """
+    page_header("Sales by Location", "Where are we generating the most business?")
+
+    if df is None or df.empty or "City" not in df.columns:
+        st.info("No location data available for the current filter selection.")
+        return
+
+    metric_choice = st.selectbox("Map metric", ["Revenue", "Orders", "Profit"], key="sales_map_metric")
+    metric_col = {"Revenue": "Total Revenue", "Orders": "Orders", "Profit": "Profit"}[metric_choice]
+    if metric_col not in df.columns:
+        st.info(f"'{metric_choice}' isn't available in the current dataset.")
+        return
+
+    mappable, unmapped = _aggregate_city_metrics(df)
+    if mappable.empty:
+        st.info(
+            "None of the cities in the current filter could be plotted on the map — their "
+            "names aren't recognized as known Indian city locations yet."
+        )
+        return
+
+    ranked  = mappable.sort_values(metric_col, ascending=False).reset_index(drop=True)
+    best    = ranked.iloc[0]
+    weakest = ranked.iloc[-1]
+    gap_pct = ((best[metric_col] - weakest[metric_col]) / weakest[metric_col] * 100
+               if len(ranked) > 1 and weakest[metric_col] > 0 else 0)
+
+    narrative(
+        f"<b>What's happening:</b> <b>{best['City']}</b> leads on {metric_choice.lower()} at "
+        f"<b>{fmt(best[metric_col]) if metric_col != 'Orders' else f'{int(best[metric_col]):,}'}</b>, "
+        f"while <b>{weakest['City']}</b> trails by <b>{gap_pct:.0f}%</b>. "
+        f"<b>What to do:</b> replicate {best['City']}'s playbook in {weakest['City']} — start with its "
+        f"top category and any active influencer campaigns."
+    )
+
+    k1, k2, k3, k4 = st.columns(4)
+    with k1: kpi_card("Locations Mapped", f"{len(mappable)}")
+    with k2: kpi_card("Top Location", best["City"], fmt(best[metric_col]) if metric_col != "Orders" else f"{int(best[metric_col]):,} orders")
+    with k3: kpi_card("Weakest Location", weakest["City"], fmt(weakest[metric_col]) if metric_col != "Orders" else f"{int(weakest[metric_col]):,} orders")
+    with k4: kpi_card("Performance Gap", f"{gap_pct:.0f}%", "Best vs. weakest")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    map_col, panel_col = st.columns([7, 3])
+    with map_col:
+        fig = _build_sales_map_figure(mappable, metric_col, metric_choice)
+        st.plotly_chart(fig, use_container_width=True)
+        if unmapped:
+            st.caption(f"Not shown on map (unrecognized location): {', '.join(unmapped)}")
+    with panel_col:
+        st.markdown("""
+        <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:16px">
+          <div style="font-size:10px;font-weight:600;color:#1D4DFF;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">
+            🏆 Location Leaderboard
+          </div>
+        """, unsafe_allow_html=True)
+        max_v = float(ranked[metric_col].clip(lower=0).max()) or 1.0
+        medals = ["🥇", "🥈", "🥉"] + ["▫️"] * max(0, len(ranked) - 3)
+        for i, row in ranked.iterrows():
+            val_disp = fmt(row[metric_col]) if metric_col != "Orders" else f"{int(row[metric_col]):,}"
+            bar_w = max(4, int(row[metric_col] / max_v * 100))
+            clr = "#22C55E" if i == 0 else "#EF4444" if i == len(ranked) - 1 and len(ranked) > 1 else "#1D4DFF"
+            st.markdown(f"""
+            <div style="margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                <span style="font-size:11px;color:#F1F5F9">{medals[i]} {row['City']}</span>
+                <span style="font-size:10px;font-weight:600;color:{clr};font-family:monospace">{val_disp}</span>
+              </div>
+              <div style="background:rgba(99,130,255,.08);border-radius:4px;height:5px">
+                <div style="width:{bar_w}%;background:{clr};height:5px;border-radius:4px"></div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown('<div class="section-head">Location Detail</div>', unsafe_allow_html=True)
+    table_cols  = ["City"] + [c for c in ["Total Revenue", "Orders", "Profit", "Profit Margin"] if c in ranked.columns]
+    display_tbl = ranked[table_cols].copy()
+    if "Total Revenue" in display_tbl.columns:
+        display_tbl["Total Revenue"] = display_tbl["Total Revenue"].map(fmt)
+    if "Profit" in display_tbl.columns:
+        display_tbl["Profit"] = display_tbl["Profit"].map(fmt)
+    if "Profit Margin" in display_tbl.columns:
+        display_tbl["Profit Margin"] = display_tbl["Profit Margin"].map(lambda v: f"{v:.1f}%")
+    if "Orders" in display_tbl.columns:
+        display_tbl["Orders"] = display_tbl["Orders"].map(lambda v: f"{int(v):,}")
+    st.dataframe(display_tbl, use_container_width=True, height=min(360, 46 + 38 * len(display_tbl)), hide_index=True)
 
 
 def render_data_trust_center():
@@ -3611,6 +3743,7 @@ NAV_PAGES = [
     "Finance",
     "AI Analyst",
     "Data Explorer",
+    "Sales by Location",
 ]
 
 
@@ -3991,8 +4124,6 @@ def render_executive_overview():
         f"<b>{kpis['city_rev'].index[0]}</b>. <b>What to do:</b> protect the leading category/city combo "
         f"while running targeted promotions in <b>{kpis['city_rev'].index[-1]}</b>, your weakest region."
     )
-
-    render_sales_map(df)
 
     st.markdown('<div class="section-head">SALES SNAPSHOT</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -4918,6 +5049,7 @@ _PAGE_RENDERERS = {
     "Finance":                 render_finance,
     "AI Analyst":              render_ai_analyst,
     "Data Explorer":           render_data_explorer,
+    "Sales by Location":       render_sales_by_location,
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
