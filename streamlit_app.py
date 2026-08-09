@@ -652,6 +652,22 @@ PLOTLY_LAYOUT = dict(
     xaxis=dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)"),
     yaxis=dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)"),
     legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+    dragmode=False,  # no click-and-drag rectangle zoom — keeps charts read-only/hover-to-inspect
+)
+
+# Shared config passed to every st.plotly_chart() call. Strips the zoom/pan/
+# select/autoscale/reset-axes toolbar buttons (the confusing "Zoom" tool seen
+# on hover) from every chart, cartesian and geo alike, leaving only the
+# simple "Download plot as png" button — easier for a non-technical viewer
+# to read at a glance, with no half-zoomed chart state to get stuck in.
+PLOTLY_CONFIG = dict(
+    displaylogo=False,
+    modeBarButtonsToRemove=[
+        "zoom2d", "pan2d", "select2d", "lasso2d",
+        "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d",
+        "hoverClosestCartesian", "hoverCompareCartesian", "toggleSpikelines",
+        "zoomInGeo", "zoomOutGeo", "resetGeo", "hoverClosestGeo",
+    ],
 )
 
 _AXIS_DEFAULTS = dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)")
@@ -1799,6 +1815,7 @@ def _chart_summary_snapshot(ctx: dict) -> go.Figure:
         textfont=dict(color="#F1F5F9", size=9), showlegend=False,
     ), row=1, col=2)
     fig.update_layout(
+        dragmode=False,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color="#9AA4B2", size=10),
         margin=dict(l=10, r=10, t=40, b=10), height=260,
@@ -3155,6 +3172,7 @@ def _build_sales_map_figure(mappable: pd.DataFrame, metric_col: str, metric_choi
         bgcolor="rgba(0,0,0,0)",
     )
     fig.update_layout(
+        dragmode=False,
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color="#9AA4B2", size=11),
         margin=dict(l=0, r=0, t=10, b=0), height=520,
@@ -3217,7 +3235,7 @@ def render_sales_by_location():
     map_col, panel_col = st.columns([7, 3])
     with map_col:
         fig = _build_sales_map_figure(mappable, metric_col, metric_choice)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         if unmapped:
             st.caption(f"Not shown on map (unrecognized location): {', '.join(unmapped)}")
     with panel_col:
@@ -3552,6 +3570,7 @@ def _build_box_figure(df_in: pd.DataFrame, column: str, group_by: str | None,
 
     title = f"{column} Distribution" + (f" by {group_by}" if group_by else "")
     fig.update_layout(
+        dragmode=False,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Inter", color="#9AA4B2", size=11),
         title=dict(text=title, font=dict(color="#F1F5F9", size=14)),
@@ -3626,7 +3645,7 @@ def render_box_plot_analysis():
     with left:
         st.markdown('<div class="bp-card">', unsafe_allow_html=True)
         fig = _build_box_figure(df, column, group_by, show_only_outliers, color_maps)
-        st.plotly_chart(fig, use_container_width=True, key="bp_main_chart")
+        st.plotly_chart(fig, use_container_width=True, key="bp_main_chart", config=PLOTLY_CONFIG)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with right:
@@ -4166,14 +4185,14 @@ def render_executive_overview():
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
         fig.update_traces(marker_line_width=0, opacity=0.85)
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         cat_data = df.groupby("Category")["Total Revenue"].sum().reset_index()
         fig = px.pie(cat_data, values="Total Revenue", names="Category",
                      color="Category", color_discrete_map=CAT_CLR, title="Category Distribution", hole=0.55)
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
         fig.update_traces(textinfo="label+percent", textfont_size=10)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">CITY × CATEGORY HEATMAP</div>', unsafe_allow_html=True)
     pivot = df.pivot_table(index="Category", columns="City", values="Total Revenue", aggfunc="sum", fill_value=0)
@@ -4184,7 +4203,7 @@ def render_executive_overview():
         texttemplate="%{text}", hovertemplate="<b>%{y}</b><br>%{x}: %{text}<extra></extra>",
     ))
     fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Intensity (City × Category)", title_font_color="#F1F5F9", height=280)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">AI BUSINESS INSIGHTS</div>', unsafe_allow_html=True)
     cols = st.columns(3)
@@ -4240,7 +4259,7 @@ def render_sales_analytics():
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", coloraxis_showscale=False)
         fig.update_yaxes(autorange="reversed", gridcolor="rgba(255,255,255,.05)")
         fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         fig = px.scatter(df, x="Orders", y="Total Revenue", color="Category",
                          color_discrete_map=CAT_CLR, hover_name="Product Name",
@@ -4249,7 +4268,7 @@ def render_sales_analytics():
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
         fig.update_traces(marker=dict(size=7, opacity=0.7))
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -4261,7 +4280,7 @@ def render_sales_analytics():
                          color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
             fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
             fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         else:
             missing_data_notice(["Influencer Active"], "Influencer Impact")
     with col2:
@@ -4276,7 +4295,7 @@ def render_sales_analytics():
                                  line=dict(color="#06b6d4", width=2)), secondary_y=True)
         fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#F1F5F9")
         fig.update_yaxes(tickprefix="₹", secondary_y=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
     price_data["Price Tier"] = price_data["Price Tier"].astype(str)
@@ -4285,7 +4304,7 @@ def render_sales_analytics():
     fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
     fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
     fig.update_traces(marker_line_width=0, opacity=0.85)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     if stats_data:
         sd = stats_data
@@ -4331,7 +4350,7 @@ def render_sales_analytics():
                         color_continuous_scale=["#EF4444","#1A1E24","#1D4DFF"],
                         zmin=-1, zmax=1, title="Full Correlation Matrix")
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=350)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     else:
         st.info("Enable 'Show Statistical Analysis' in the sidebar (needs ≥5 rows in the current filter).")
 
@@ -4348,7 +4367,7 @@ def render_sales_analytics():
             fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
             fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#F1F5F9", height=280)
             fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         with col2:
             growth_clr = "#22C55E" if fc["growth_pct"] >= 0 else "#EF4444"
             st.markdown(f"""
@@ -4390,7 +4409,7 @@ def render_sales_analytics():
             height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(255,255,255,.05)"),
             yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0,105], ticksuffix="%", showgrid=False),
             legend=dict(orientation="h", y=1.1))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
         rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
@@ -4446,8 +4465,8 @@ def render_delivery_analytics():
                              {"range":[95,100],"color":"rgba(16,185,129,.15)"}],
                    "threshold":{"line":{"color":"#fff","width":2},"thickness":0.75,"value":95}},
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220, margin=dict(l=20,r=20,t=40,b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220, margin=dict(l=20,r=20,t=40,b=10))
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         st.markdown(f'<div style="text-align:center;font-size:12px;font-weight:600;color:{dl["status_color"]}">{dl["status"]}</div>', unsafe_allow_html=True)
     with col2:
         fig = go.Figure(go.Bar(
@@ -4455,23 +4474,23 @@ def render_delivery_analytics():
             y=["P50","Avg","P90","Promise"], orientation="h",
             marker_color=["#10b981","#6366f1","#ef4444","#f59e0b"], marker_line_width=0,
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
                           title=dict(text="Delivery Time (minutes)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=40,t=40,b=10),
                           xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
                           yaxis=dict(gridcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col3:
         bar_colors = ["#ef4444" if x > dl["promise"]+2 else "#10b981" for x in dl["hist_centers"]]
         fig = go.Figure(go.Bar(x=dl["hist_centers"], y=dl["hist_counts"], marker_color=bar_colors, marker_line_width=0))
         fig.add_vline(x=dl["promise"], line_dash="dash", line_color="#f59e0b",
                       annotation_text="10-min promise", annotation_font_color="#f59e0b")
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=220,
                           title=dict(text="Order Distribution by Time", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=40,b=10),
                           xaxis=dict(title="Minutes",gridcolor="rgba(99,130,255,.05)"),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">ORDER QUALITY — DEFECT RATE</div>', unsafe_allow_html=True)
     df_d = defects
@@ -4482,10 +4501,10 @@ def render_delivery_analytics():
             marker=dict(color=["#6366f1","#8b5cf6","#f59e0b","#ef4444","#10b981"]),
             connector=dict(line=dict(color="#CBD5E1", width=1)),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
                           title=dict(text=f"Order Quality Funnel | ODR: {df_d['odr_pct']:.1f}%", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         fig = go.Figure(go.Bar(
             x=["Expired/Damaged","Missing Items","Cancelled (OOS)"],
@@ -4494,11 +4513,11 @@ def render_delivery_analytics():
             text=[df_d["expired"],df_d["missing"],df_d["cancelled_oos"]],
             textposition="outside", textfont=dict(color="#F1F5F9"),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=300,
                           title=dict(text="Defect Breakdown by Category", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">DETAILED DELIVERY TABLE</div>', unsafe_allow_html=True)
     if _present_delivery_cols:
@@ -4548,10 +4567,10 @@ def render_inventory_intelligence():
             labels=["Critical 🔴","Low Stock 🟡","OK 🟢"], values=[critical_count, low_count, ok_count],
             hole=0.65, marker=dict(colors=["#ef4444","#f59e0b","#10b981"]), textinfo="label+value", textfont=dict(size=11),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
                           title=dict(text="Stock Risk Distribution", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         st.markdown(f'<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;padding:12px;text-align:center;margin-top:8px"><div style="font-size:22px;font-weight:700;color:#ef4444">{critical_count}</div><div style="font-size:10px;color:#9AA4B2">Products need immediate reorder</div></div>', unsafe_allow_html=True)
 
     st.markdown('<div class="section-head">FAST vs SLOW MOVERS</div>', unsafe_allow_html=True)
@@ -4563,14 +4582,14 @@ def render_inventory_intelligence():
             marker_color="#10b981", marker_line_width=0, text=fast.values, textposition="outside"))
         fig.update_layout(**PLOTLY_BASE, title=dict(text="🟢 Fast-Moving Products (by Orders)", font=dict(color="#F1F5F9", size=13)),
                           height=280, yaxis=dict(autorange="reversed", gridcolor="rgba(0,0,0,0)"), showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         slow = prod_velocity.tail(8).sort_values()
         fig = go.Figure(go.Bar(x=slow.values, y=slow.index.tolist(), orientation="h",
             marker_color="#f59e0b", marker_line_width=0, text=slow.values, textposition="outside"))
         fig.update_layout(**PLOTLY_BASE, title=dict(text="🟡 Slow-Moving Products (by Orders)", font=dict(color="#F1F5F9", size=13)),
                           height=280, yaxis=dict(gridcolor="rgba(0,0,0,0)"), showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">INVENTORY SUMMARY</div>', unsafe_allow_html=True)
     i1, i2, i3, i4 = st.columns(4)
@@ -4604,7 +4623,7 @@ def render_operations():
                  title="Order Volume by City", labels={"Orders":"Total Orders"})
     fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
     fig.update_traces(marker_line_width=0, opacity=0.85)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">PROCESSING TIME BREAKDOWN</div>', unsafe_allow_html=True)
     if _present_operations_cols:
@@ -4612,7 +4631,7 @@ def render_operations():
             if pd.api.types.is_numeric_dtype(df[col]):
                 fig = px.histogram(df, x=col, nbins=20, title=f"Distribution of {col}", color_discrete_sequence=["#6366f1"])
                 fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=260)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     else:
         st.markdown("""
         <div class="missing-box">
@@ -4652,11 +4671,11 @@ def render_customer_analytics():
         fig = go.Figure()
         fig.add_trace(go.Bar(name="New Customers",    x=weeks, y=new_c,    marker_color="#6366f1", marker_line_width=0))
         fig.add_trace(go.Bar(name="Repeat Customers", x=weeks, y=repeat_c, marker_color="#10b981", marker_line_width=0))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
                           barmode="group", title=dict(text="New vs Repeat Customers (Weekly, illustrative)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=10)),
                           yaxis=dict(gridcolor="rgba(99,130,255,.05)"), xaxis=dict(gridcolor="rgba(0,0,0,0)"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         retention_matrix = [[100,68,52,41],[100,71,55,43],[100,65,48,38],[100,73,58,46]]
         fig = go.Figure(go.Heatmap(
@@ -4665,10 +4684,10 @@ def render_customer_analytics():
             text=[[f"{v}%" for v in row] for row in retention_matrix], texttemplate="%{text}",
             hovertemplate="Cohort: %{y}<br>Week: %{x}<br>Retention: %{text}<extra></extra>",
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=280,
                           title=dict(text="Cohort Retention Table (%, illustrative)", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">CITY COMPETITIVE RADAR — MULTI-KPI</div>', unsafe_allow_html=True)
     radar_metrics = ["Revenue", "Orders", "Avg Price", "Discount%", "Profit Margin"]
@@ -4697,6 +4716,7 @@ def render_customer_analytics():
             fig.add_trace(go.Scatterpolar(r=vals, theta=cats, name=city, fill="toself",
                 fillcolor=_hex_to_rgba(clr, 0.08), line=dict(color=clr, width=2), marker=dict(size=5)))
         fig.update_layout(
+            dragmode=False,
             paper_bgcolor="rgba(0,0,0,0)",
             polar=dict(bgcolor="rgba(0,0,0,0)",
                 radialaxis=dict(visible=True, range=[0,1], gridcolor="rgba(255,255,255,.09)", tickfont=dict(size=8, color="#64748B")),
@@ -4706,7 +4726,7 @@ def render_customer_analytics():
             legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
             margin=dict(l=30, r=30, t=50, b=30), height=360,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         radar_norm["Score"] = radar_norm.mean(axis=1) * 100
         ranked = radar_norm[["Score"]].sort_values("Score", ascending=False)
@@ -4734,7 +4754,7 @@ def render_customer_analytics():
 
     if "Influencer Active" in df.columns:
         st.markdown('<div class="section-head">INFLUENCER-DRIVEN CUSTOMER LIFT</div>', unsafe_allow_html=True)
-        st.plotly_chart(_chart_influencer_lift(_bb_context(df), df), use_container_width=True)
+        st.plotly_chart(_chart_influencer_lift(_bb_context(df), df), use_container_width=True, config=PLOTLY_CONFIG)
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -4765,10 +4785,10 @@ def render_finance():
             decreasing={"marker":{"color":"#ef4444"}}, increasing={"marker":{"color":"#10b981"}},
             totals={"marker":{"color":"#6366f1"}},
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
                           title=dict(text=f"Revenue → Net Profit | CM: {ue['cm_pct']:.1f}%", font=dict(color="#F1F5F9",size=12)),
                           margin=dict(l=10,r=10,t=50,b=10), yaxis=dict(gridcolor="rgba(99,130,255,.05)"), showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         fig = go.Figure(go.Pie(
             labels=["COGS (52%)","Rider Pay (12%)","Packaging (3%)","Gateway (2%)","Promos (5%)","Net Profit (26%)"],
@@ -4776,10 +4796,10 @@ def render_finance():
             hole=0.6, marker=dict(colors=["#6366f1","#06b6d4","#f59e0b","#8b5cf6","#ec4899","#10b981"]),
             textinfo="label+percent", textfont=dict(size=10),
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
+        fig.update_layout(dragmode=False, paper_bgcolor="rgba(0,0,0,0)", font_color="#9AA4B2", height=320,
                           title=dict(text="Cost Structure Breakdown", font=dict(color="#F1F5F9",size=13)),
                           margin=dict(l=10,r=10,t=50,b=10), legend=dict(font=dict(size=9)))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">PROFITABILITY BY CATEGORY & CITY</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
@@ -4793,7 +4813,7 @@ def render_finance():
         ))
         fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by Category", font=dict(color="#F1F5F9", size=13)),
                           yaxis=dict(ticksuffix="%", gridcolor="rgba(255,255,255,.05)"), showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     with col2:
         city_profit = df.groupby("City").agg(Revenue=("Total Revenue","sum"), Profit=("Profit","sum")).reset_index()
         city_profit["Margin %"] = np.where(city_profit["Revenue"]>0, city_profit["Profit"]/city_profit["Revenue"]*100, 0)
@@ -4804,7 +4824,7 @@ def render_finance():
         ))
         fig.update_layout(**PLOTLY_BASE, title=dict(text="Profit Margin by City", font=dict(color="#F1F5F9", size=13)),
                           yaxis=dict(ticksuffix="%", gridcolor="rgba(255,255,255,.05)"), showlegend=False)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<div class="section-head">DELIVERY COST IMPACT</div>', unsafe_allow_html=True)
     dcol1, dcol2, dcol3 = st.columns(3)
@@ -4905,7 +4925,7 @@ def render_ai_analyst():
         if msg["role"] == "bot" and msg.get("fig_json"):
             restored = _fig_from_json(msg["fig_json"])
             if restored:
-                st.plotly_chart(restored, use_container_width=True, key=f"bb_fig_{_msg_idx}")
+                st.plotly_chart(restored, use_container_width=True, key=f"bb_fig_{_msg_idx}", config=PLOTLY_CONFIG)
 
     st.markdown("**💡 Quick Questions:**")
     QUICK_BASE = [
@@ -4975,7 +4995,7 @@ def render_ai_analyst():
             stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}</div>', unsafe_allow_html=True)
 
             if response_fig and not error_occurred:
-                st.plotly_chart(response_fig, use_container_width=True, key="bb_stream_chart")
+                st.plotly_chart(response_fig, use_container_width=True, key="bb_stream_chart", config=PLOTLY_CONFIG)
 
             if not error_occurred:
                 st.session_state.bb_messages_llm.append({"role": "assistant", "content": full_response})
