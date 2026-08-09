@@ -3880,13 +3880,17 @@ with st.sidebar:
 
     st.markdown("#### 🔍 Filters")
 
-    # Reset must happen BEFORE the widgets below are instantiated this run —
-    # Streamlit won't allow changing a widget's session_state value after
-    # it's already been created in the same script pass.
-    if st.session_state.get("_reset_filters_trigger"):
+    # Any pending clear/reset must happen BEFORE the widgets below are
+    # instantiated this run — Streamlit won't allow changing a widget's
+    # session_state value after it's already been created in the same
+    # script pass, so both the "reset all" and "clear one" actions defer
+    # their actual work to the top of the NEXT run via a flag + rerun.
+    if st.session_state.pop("_reset_filters_trigger", False):
         for _fk in ["filter_city", "filter_cat", "filter_inf", "filter_prod", "filter_search"]:
             st.session_state.pop(_fk, None)
-        st.session_state["_reset_filters_trigger"] = False
+    _pending_clear = st.session_state.pop("_clear_single_filter", None)
+    if _pending_clear:
+        st.session_state.pop(_pending_clear, None)
 
     cities     = ["All"] + sorted(df_raw["City"].unique())
     categories = ["All"] + sorted(df_raw["Category"].unique())
@@ -3898,18 +3902,39 @@ with st.sidebar:
     sel_prod = st.selectbox("Product",       products, key="filter_prod")
     search   = st.text_input("Search product", placeholder="e.g. Maggi...", key="filter_search")
 
-    _active_filter_count = sum([
-        sel_city != "All", sel_cat != "All", sel_inf != "All",
-        sel_prod != "All", bool(search.strip()) if search else False,
-    ])
-    if _active_filter_count:
-        rc1, rc2 = st.columns([2, 1.2])
-        with rc1:
-            st.caption(f"🔘 {_active_filter_count} filter(s) active")
-        with rc2:
-            if st.button("↺ Reset", use_container_width=True, key="reset_filters_btn"):
-                st.session_state["_reset_filters_trigger"] = True
-                st.rerun()
+    # Each active filter (City/Region included) gets its own small "✕" clear
+    # option shown as a chip, right below the filters — so the user can drop
+    # a single filter without touching the others or re-selecting "All".
+    _active_filters = []
+    if sel_city != "All":            _active_filters.append(("📍 City/Region", sel_city, "filter_city"))
+    if sel_cat  != "All":            _active_filters.append(("🏷️ Category",    sel_cat,  "filter_cat"))
+    if sel_inf  != "All":            _active_filters.append(("⚡ Influencer",  sel_inf,  "filter_inf"))
+    if sel_prod != "All":            _active_filters.append(("📦 Product",     sel_prod, "filter_prod"))
+    if search and search.strip():    _active_filters.append(("🔎 Search",      search.strip(), "filter_search"))
+
+    if _active_filters:
+        st.markdown(
+            f'<div style="font-size:9.5px;font-weight:700;color:#6B7688;text-transform:uppercase;'
+            f'letter-spacing:.08em;margin:12px 0 6px">{len(_active_filters)} Active Filter(s)</div>',
+            unsafe_allow_html=True,
+        )
+        for label, val, fkey in _active_filters:
+            cc1, cc2 = st.columns([5, 1])
+            with cc1:
+                st.markdown(f"""
+                <div style="background:rgba(29,77,255,.1);border:1px solid rgba(29,77,255,.25);
+                            border-radius:8px;padding:6px 10px;font-size:11px;color:#F1F5F9;
+                            overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px">
+                  <span style="color:#9AA4B2">{label}:</span> <b>{val}</b>
+                </div>
+                """, unsafe_allow_html=True)
+            with cc2:
+                if st.button("✕", key=f"clear_{fkey}", use_container_width=True, help=f"Clear {label} filter"):
+                    st.session_state["_clear_single_filter"] = fkey
+                    st.rerun()
+        if st.button("↺ Reset All Filters", use_container_width=True, key="reset_filters_btn"):
+            st.session_state["_reset_filters_trigger"] = True
+            st.rerun()
 
     st.markdown("---")
     st.markdown("#### ⚙️ Settings")
