@@ -3879,15 +3879,37 @@ with st.sidebar:
         df_raw = load_default()
 
     st.markdown("#### 🔍 Filters")
+
+    # Reset must happen BEFORE the widgets below are instantiated this run —
+    # Streamlit won't allow changing a widget's session_state value after
+    # it's already been created in the same script pass.
+    if st.session_state.get("_reset_filters_trigger"):
+        for _fk in ["filter_city", "filter_cat", "filter_inf", "filter_prod", "filter_search"]:
+            st.session_state.pop(_fk, None)
+        st.session_state["_reset_filters_trigger"] = False
+
     cities     = ["All"] + sorted(df_raw["City"].unique())
     categories = ["All"] + sorted(df_raw["Category"].unique())
     products   = ["All"] + sorted(df_raw["Product Name"].unique())
 
-    sel_city = st.selectbox("City / Region", cities)
-    sel_cat  = st.selectbox("Category",      categories)
-    sel_inf  = st.selectbox("Influencer",    ["All", "Yes", "No"])
-    sel_prod = st.selectbox("Product",       products)
-    search   = st.text_input("Search product", placeholder="e.g. Maggi...")
+    sel_city = st.selectbox("City / Region", cities, key="filter_city")
+    sel_cat  = st.selectbox("Category",      categories, key="filter_cat")
+    sel_inf  = st.selectbox("Influencer",    ["All", "Yes", "No"], key="filter_inf")
+    sel_prod = st.selectbox("Product",       products, key="filter_prod")
+    search   = st.text_input("Search product", placeholder="e.g. Maggi...", key="filter_search")
+
+    _active_filter_count = sum([
+        sel_city != "All", sel_cat != "All", sel_inf != "All",
+        sel_prod != "All", bool(search.strip()) if search else False,
+    ])
+    if _active_filter_count:
+        rc1, rc2 = st.columns([2, 1.2])
+        with rc1:
+            st.caption(f"🔘 {_active_filter_count} filter(s) active")
+        with rc2:
+            if st.button("↺ Reset", use_container_width=True, key="reset_filters_btn"):
+                st.session_state["_reset_filters_trigger"] = True
+                st.rerun()
 
     st.markdown("---")
     st.markdown("#### ⚙️ Settings")
