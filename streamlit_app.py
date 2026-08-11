@@ -497,6 +497,25 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11):has(i
   background-color: var(--nova-blue);
 }
 
+/* Icon for the new 12th nav item (Product Analytics) — standalone rule
+   only, items 1-11 above are completely untouched. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12)::before {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .15s ease;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='11' width='4' height='10' rx='1'/%3E%3Crect x='10' y='6' width='4' height='15' rx='1'/%3E%3Crect x='17' y='2' width='4' height='19' rx='1'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='11' width='4' height='10' rx='1'/%3E%3Crect x='10' y='6' width='4' height='15' rx='1'/%3E%3Crect x='17' y='2' width='4' height='19' rx='1'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+
 /* ── Inputs / selects inside the sidebar ─────────────────────────────── */
 section[data-testid="stSidebar"] .stTextInput input,
 section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
@@ -1441,6 +1460,54 @@ def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     ]
 
 
+def compute_executive_summary(df: pd.DataFrame, kpis: dict) -> str:
+    """
+    One compact, auto-generated paragraph for the top of the Executive
+    Overview page — biggest positive/negative signal, best region/category/
+    product, and the single most useful recommendation. Built entirely from
+    kpis/df that are already computed elsewhere; nothing here is invented.
+    """
+    cat_rev  = kpis["cat_rev"]
+    city_rev = kpis["city_rev"]
+    if cat_rev is None or city_rev is None or len(cat_rev) == 0 or len(city_rev) == 0:
+        return "Not enough data in the current filter to generate a summary."
+
+    prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
+    top_prod = prod_rev.index[0] if len(prod_rev) else "N/A"
+    best_cat, best_city, weak_city = cat_rev.index[0], city_rev.index[0], city_rev.index[-1]
+    gap_pct = ((city_rev.iloc[0] - city_rev.iloc[-1]) / city_rev.iloc[-1] * 100
+               if len(city_rev) > 1 and city_rev.iloc[-1] > 0 else 0)
+
+    return (
+        f"Revenue totals <b>{fmt(kpis['total_rev'])}</b> at a <b>{kpis['margin']:.1f}%</b> margin, "
+        f"led by <b>{best_cat}</b> in <b>{best_city}</b> and anchored by <b>{top_prod}</b> as the top "
+        f"single product. <b>{weak_city}</b> trails the leading region by <b>{gap_pct:.0f}%</b> — the "
+        f"clearest opportunity for targeted promotions right now."
+    )
+
+
+def detect_top_anomaly(df: pd.DataFrame, z_threshold: float = 3.0) -> dict | None:
+    """
+    Lightweight anomaly flag for the Executive Overview: the single most
+    extreme Total Revenue row (by z-score) in the current filtered view,
+    only surfaced when it's a genuinely strong outlier (|z| >= z_threshold).
+    Reuses the same z-score approach as the Sales Analytics outlier
+    detector — no new statistical method is introduced.
+    """
+    if len(df) < 5:
+        return None
+    z = np.abs(stats.zscore(df["Total Revenue"]))
+    if z.max() < z_threshold:
+        return None
+    idx = int(np.argmax(z))
+    row = df.iloc[idx]
+    direction = "spike" if row["Total Revenue"] > df["Total Revenue"].mean() else "drop"
+    return dict(
+        product=row["Product Name"], city=row["City"], category=row["Category"],
+        revenue=float(row["Total Revenue"]), z=float(z[idx]), direction=direction,
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── BLINKBOT — MULTI-TURN MEMORY & RICH RESPONSE FORMATTING
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -1667,13 +1734,20 @@ def _bb_context(df: pd.DataFrame) -> dict:
 
 def _chart_revenue_by_category(ctx: dict) -> go.Figure:
     cat_r = ctx["cat_r"]
+    total = cat_r.sum()
+    pct = (cat_r / total * 100) if total else cat_r * 0
+    avg = cat_r.mean()
     fig = go.Figure(go.Bar(
         x=cat_r.index.tolist(), y=cat_r.values,
         marker_color=[CAT_CLR.get(c, "#6366f1") for c in cat_r.index],
         marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cat_r.values], textposition="outside",
         textfont=dict(color="#F1F5F9", size=10),
+        customdata=pct.values,
+        hovertemplate="<b>%{x}</b><br>Revenue: ₹%{y:,.0f}<br>Share of total: %{customdata:.1f}%<extra></extra>",
     ))
+    fig.add_hline(y=avg, line_dash="dot", line_color="rgba(255,255,255,.35)", line_width=1,
+                  annotation_text="avg", annotation_font=dict(size=9, color="#9AA4B2"), annotation_position="right")
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text="💬 Revenue by Category", font=dict(color="#1D4DFF", size=12)),
         height=240, yaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS), showlegend=False)
@@ -1682,6 +1756,9 @@ def _chart_revenue_by_category(ctx: dict) -> go.Figure:
 
 def _chart_city_ranking(ctx: dict) -> go.Figure:
     cr = ctx["city_r"]
+    total = cr.sum()
+    pct = (cr / total * 100) if total else cr * 0
+    avg = cr.mean()
     colors = ["#10b981" if i == 0 else "#ef4444" if i == len(cr)-1 else "#6366f1"
               for i in range(len(cr))]
     fig = go.Figure(go.Bar(
@@ -1689,7 +1766,11 @@ def _chart_city_ranking(ctx: dict) -> go.Figure:
         marker_color=colors, marker_line_width=0, opacity=0.85,
         text=[fmt(v) for v in cr.values], textposition="outside",
         textfont=dict(color="#F1F5F9", size=10),
+        customdata=pct.values,
+        hovertemplate="<b>%{y}</b><br>Revenue: ₹%{x:,.0f}<br>Share of total: %{customdata:.1f}%<extra></extra>",
     ))
+    fig.add_vline(x=avg, line_dash="dot", line_color="rgba(255,255,255,.35)", line_width=1,
+                  annotation_text="avg", annotation_font=dict(size=9, color="#9AA4B2"), annotation_position="top")
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text="💬 City Revenue Ranking", font=dict(color="#1D4DFF", size=12)),
         height=240, xaxis=dict(tickprefix="₹", **_AXIS_DEFAULTS),
@@ -1699,12 +1780,16 @@ def _chart_city_ranking(ctx: dict) -> go.Figure:
 
 def _chart_top_products(ctx: dict, n: int = 8) -> go.Figure:
     pr = ctx["prod_r"].head(n)
+    total = ctx["prod_r"].sum()
+    pct = (pr / total * 100) if total else pr * 0
     fig = go.Figure(go.Bar(
         x=pr.values, y=pr.index.tolist(), orientation="h",
         marker=dict(color=pr.values, colorscale=[[0,"#312e81"],[0.5,"#6366f1"],[1,"#06b6d4"]], showscale=False),
         marker_line_width=0,
         text=[fmt(v) for v in pr.values], textposition="outside",
         textfont=dict(color="#F1F5F9", size=10),
+        customdata=pct.values,
+        hovertemplate="<b>%{y}</b><br>Revenue: ₹%{x:,.0f}<br>Share of total: %{customdata:.1f}%<extra></extra>",
     ))
     fig.update_layout(**PLOTLY_BASE,
         title=dict(text=f"💬 Top {n} Products by Revenue", font=dict(color="#1D4DFF", size=12)),
@@ -2642,6 +2727,77 @@ def _bb_compare(q, ctx, df, mem, detailed=False):
     return None
 
 
+def _bb_executive_summary(q, ctx, df, mem, detailed=False):
+    if not _any_kw(q, ["executive summary", "business summary", "overall summary",
+                        "give me the summary", "top level summary"]):
+        return None
+    kpis_local = compute_kpis(df)
+    mem.update("executive_summary")
+    text = (
+        ResponseBuilder("📋", "Executive Summary")
+        .answer(compute_executive_summary(df, kpis_local))
+        .followup("'Why did Delhi perform well?' · 'Are there any anomalies?' · 'Give me a recommendation'")
+        .build()
+    )
+    return text, _chart_summary_snapshot(ctx)
+
+
+def _bb_anomaly(q, ctx, df, mem, detailed=False):
+    if not _any_kw(q, ["anomaly", "anomalies", "unusual", "spike", "sudden drop",
+                        "sudden increase", "irregular"]):
+        return None
+    mem.update("anomaly")
+    anomaly = detect_top_anomaly(df)
+    if not anomaly:
+        text = (
+            ResponseBuilder("✅", "No Significant Anomalies")
+            .answer("Nothing in the current (filtered) view stands out as a strong statistical outlier "
+                    "(|Z| < 3) in Total Revenue.")
+            .build()
+        )
+        return text, None
+    text = (
+        ResponseBuilder("⚠️", "Anomaly Detected")
+        .answer(f"**{anomaly['product']}** in **{anomaly['city']}** ({anomaly['category']}) shows an "
+                f"unusual revenue **{anomaly['direction']}** — {fmt(anomaly['revenue'])} "
+                f"(Z-score {anomaly['z']:.1f} vs the rest of the current view).")
+        .tip("Check this row for a data-entry error first; if genuine, it may be a bulk order or a "
+             "one-off promotion worth investigating separately.")
+        .followup(f"'Why is {anomaly['city']} performing this way?' · 'What's the data trust score?'")
+        .build()
+    )
+    return text, None
+
+
+def _bb_product_quadrant(q, ctx, df, mem, detailed=False):
+    if not _any_kw(q, ["profitability matrix", "product quadrant", "star product",
+                        "growth opportunity", "which products are stars"]):
+        return None
+    if "Product Name" not in df.columns or "Profit Margin" not in df.columns:
+        return "Product-level profitability data isn't available for the current view.", None
+    prod_agg = df.groupby("Product Name").agg(Revenue=("Total Revenue", "sum"), Profit=("Profit", "sum"))
+    prod_agg["Margin"] = np.where(prod_agg["Revenue"] > 0, prod_agg["Profit"] / prod_agg["Revenue"] * 100, 0)
+    median_rev, median_mgn = prod_agg["Revenue"].median(), prod_agg["Margin"].median()
+    prod_agg["Quadrant"] = prod_agg.apply(
+        lambda r: _classify_profitability_quadrant(r["Revenue"], r["Margin"], median_rev, median_mgn), axis=1
+    )
+    counts = prod_agg["Quadrant"].value_counts()
+    stars  = prod_agg[prod_agg["Quadrant"] == "Star"].sort_values("Revenue", ascending=False)
+    mem.update("product_quadrant")
+    rb = (
+        ResponseBuilder("🧭", "Product Profitability Matrix")
+        .answer(f"Splitting products at the median Revenue and Margin: "
+                f"**{counts.get('Star', 0)} Star**, **{counts.get('Volume Driver', 0)} Volume Driver**, "
+                f"**{counts.get('Growth Opportunity', 0)} Growth Opportunity**, "
+                f"**{counts.get('Review', 0)} Review** candidate(s).")
+    )
+    if len(stars):
+        rb = rb.context(f"Top Star product: **{stars.index[0]}** — high revenue and above-median margin.")
+    rb = rb.tip("Protect Star products first, then look at Growth Opportunities for wider distribution.")
+    rb = rb.followup("'Give me a recommendation' · 'Which category has the lowest margin?'")
+    return rb.build(), _chart_top_products(ctx)
+
+
 def _bb_fallback(q, ctx, df, mem, detailed=False):
     hint    = f"\n\n💬 *Last topic: **{mem.last_intent}** — say 'tell me more' to expand.*" if mem.last_intent else ""
     cols_av = ", ".join(df.columns.tolist())
@@ -2653,6 +2809,7 @@ def _bb_fallback(q, ctx, df, mem, detailed=False):
             "- 🏷️ Category breakdown\n- ⚡ Influencer impact\n- 🛒 Orders & AOV\n"
             "- 🏷️ Discount analysis\n- 📦 Inventory alerts\n- ⚖️ Compare any two cities/categories/products\n"
             "- 📐 Statistics, correlations & outliers\n- 🛡️ Data trust score\n- 📈 Trend estimates\n"
+            "- 📋 Executive summary\n- ⚠️ Anomaly detection\n- 🧭 Product profitability matrix\n"
             "- 🎯 Recommendations\n- 💡 Quick insights" + hint
         )
         .context(f"Available columns: {cols_av}")
@@ -2666,6 +2823,7 @@ def _bb_fallback(q, ctx, df, mem, detailed=False):
 # so they aren't shadowed by looser single-keyword handlers further down.
 _BB_HANDLERS = [
     _bb_greeting, _bb_unsupported, _bb_why, _bb_compare, _bb_insights, _bb_trust,
+    _bb_executive_summary, _bb_anomaly, _bb_product_quadrant,
     _bb_statistics, _bb_outliers, _bb_correlation, _bb_forecast, _bb_recommendation,
     _bb_explain_dashboard, _bb_summary, _bb_best_product, _bb_margin, _bb_worst_product,
     _bb_revenue, _bb_profit, _bb_aov, _bb_city, _bb_category,
@@ -2853,6 +3011,10 @@ def _call_claude_stream(messages: list[dict], system: str, api_key: str):
 
 def _detect_chart_for_question(question: str, ctx: dict, df: pd.DataFrame) -> "go.Figure | None":
     q = question.lower()
+    if _any_kw(q, ["anomaly", "anomalies", "unusual", "spike"]):
+        return None
+    if _any_kw(q, ["profitability matrix", "product quadrant", "star product"]):
+        return _chart_top_products(ctx)
     if _any_kw(q, ["compare","vs","versus","against","city","region","where","location"]):
         return _chart_city_ranking(ctx)
     if _any_kw(q, ["category","segment"]):
@@ -3096,10 +3258,12 @@ def _build_sales_map_figure(mappable: pd.DataFrame, metric_col: str, metric_choi
 
     max_val  = float(mappable[metric_col].clip(lower=0).max()) or 1.0
     size_ref = 2.0 * max_val / (50.0 ** 2)  # keeps the largest bubble ~50px, scales the rest proportionally
+    metric_total = float(mappable[metric_col].clip(lower=0).sum()) or 1.0
 
     def _hover_line(row) -> str:
         rank = rank_of.get(row["City"], 0) + 1
-        parts = [f"<b>#{rank} {row['City']}</b>"]
+        share = max(0.0, row[metric_col]) / metric_total * 100
+        parts = [f"<b>#{rank} {row['City']}</b> — {share:.1f}% of total {metric_choice.lower()}"]
         if "Total Revenue" in mappable.columns:
             parts.append(f"Revenue: {fmt(row['Total Revenue'])}")
         if "Orders" in mappable.columns:
@@ -3163,6 +3327,130 @@ def _build_sales_map_figure(mappable: pd.DataFrame, metric_col: str, metric_choi
     return fig
 
 
+def _classify_profitability_quadrant(revenue: float, margin: float, median_rev: float, median_margin: float) -> str:
+    """Classifies a product into a quadrant using median splits on Revenue
+    and Profit Margin — a standard, data-driven way to label performance
+    without inventing thresholds."""
+    high_rev = revenue >= median_rev
+    high_mgn = margin >= median_margin
+    if high_rev and high_mgn:   return "Star"
+    if high_rev and not high_mgn: return "Volume Driver"
+    if not high_rev and high_mgn: return "Growth Opportunity"
+    return "Review"
+
+
+_QUADRANT_COLORS = {
+    "Star": "#22C55E", "Volume Driver": "#1D4DFF",
+    "Growth Opportunity": "#D97706", "Review": "#EF4444",
+}
+
+
+def render_product_analytics():
+    """
+    Dedicated 'Product Analytics' page. Reuses the already-filtered `df`
+    (every sidebar filter applies automatically), fmt(), and CAT_CLR for
+    visual consistency. Two components: a metric-switchable Top Products
+    ranking, and a Revenue-vs-Margin Profitability Matrix with quadrant
+    classification — both computed purely from existing Revenue/Profit/
+    Orders/Profit Margin columns, nothing fabricated. No existing page,
+    calculation, or filter is touched by this function.
+    """
+    page_header("Product Analytics", "Top Performers · Profitability Matrix")
+
+    if df is None or df.empty or "Product Name" not in df.columns:
+        st.info("No product data available for the current filter selection.")
+        return
+
+    prod_agg = df.groupby("Product Name").agg(
+        Revenue=("Total Revenue", "sum"), Profit=("Profit", "sum"), Orders=("Orders", "sum"),
+    )
+    prod_agg["Margin"] = np.where(prod_agg["Revenue"] > 0, prod_agg["Profit"] / prod_agg["Revenue"] * 100, 0)
+    if "Category" in df.columns:
+        prod_agg = prod_agg.join(df.groupby("Product Name")["Category"].agg(lambda s: s.mode().iloc[0]))
+
+    narrative(
+        f"<b>What's happening:</b> {len(prod_agg)} distinct products are active in the current view. "
+        f"<b>What to do:</b> switch the metric below to see rankings shift, then check the Profitability "
+        f"Matrix to spot which top-sellers are also genuinely profitable."
+    )
+
+    st.markdown('<div class="section-head">Top Products</div>', unsafe_allow_html=True)
+    _prod_metric = st.radio(
+        "Ranking Metric", ["Revenue", "Profit", "Orders", "Margin"],
+        horizontal=True, key="prod_rank_metric", label_visibility="collapsed",
+    )
+    top10 = prod_agg.sort_values(_prod_metric, ascending=False).head(10).sort_values(_prod_metric)
+    is_pct = _prod_metric == "Margin"
+    fig = go.Figure(go.Bar(
+        x=top10[_prod_metric], y=top10.index.tolist(), orientation="h",
+        marker=dict(color=top10[_prod_metric], colorscale=[[0,"#312e81"],[0.5,"#6366f1"],[1,"#06b6d4"]], showscale=False),
+        marker_line_width=0,
+        text=[f"{v:.1f}%" for v in top10[_prod_metric]] if is_pct else [fmt(v) for v in top10[_prod_metric]],
+        textposition="outside", textfont=dict(color="#F1F5F9", size=10),
+    ))
+    fig.update_layout(**PLOTLY_BASE,
+        title=dict(text=f"Top 10 Products by {_prod_metric}", font=dict(color="#1D4DFF", size=13)),
+        height=340, xaxis=dict(ticksuffix="%" if is_pct else "", tickprefix="" if is_pct else "₹", **_AXIS_DEFAULTS),
+        showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">Profitability Matrix</div>', unsafe_allow_html=True)
+    st.caption("Revenue (x-axis) vs. Profit Margin (y-axis) — quadrants split at the median of each.")
+    median_rev = prod_agg["Revenue"].median()
+    median_mgn = prod_agg["Margin"].median()
+    prod_agg["Quadrant"] = prod_agg.apply(
+        lambda r: _classify_profitability_quadrant(r["Revenue"], r["Margin"], median_rev, median_mgn), axis=1
+    )
+    fig = go.Figure()
+    for q, clr in _QUADRANT_COLORS.items():
+        sub = prod_agg[prod_agg["Quadrant"] == q]
+        if sub.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=sub["Revenue"], y=sub["Margin"], mode="markers", name=q,
+            marker=dict(size=np.clip(sub["Orders"] / max(1, prod_agg["Orders"].max()) * 40 + 6, 6, 46),
+                        color=clr, opacity=0.75, line=dict(width=1, color="rgba(255,255,255,.35)")),
+            text=sub.index, customdata=np.stack([sub["Orders"], sub["Profit"]], axis=-1),
+            hovertemplate="<b>%{text}</b><br>Revenue: ₹%{x:,.0f}<br>Margin: %{y:.1f}%<br>"
+                          "Orders: %{customdata[0]:,.0f}<br>Profit: ₹%{customdata[1]:,.0f}<extra></extra>",
+        ))
+    fig.add_vline(x=median_rev, line_dash="dash", line_color="rgba(255,255,255,.2)")
+    fig.add_hline(y=median_mgn, line_dash="dash", line_color="rgba(255,255,255,.2)")
+    fig.update_layout(**PLOTLY_BASE,
+        title=dict(text="Revenue vs. Profit Margin by Product", font=dict(color="#1D4DFF", size=13)),
+        height=420, xaxis=dict(title="Revenue (₹)", tickprefix="₹", **_AXIS_DEFAULTS),
+        yaxis=dict(title="Profit Margin (%)", ticksuffix="%", **_AXIS_DEFAULTS),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)))
+    st.plotly_chart(fig, use_container_width=True)
+
+    q_counts = prod_agg["Quadrant"].value_counts()
+    stars = prod_agg[prod_agg["Quadrant"] == "Star"].sort_values("Revenue", ascending=False)
+    review = prod_agg[prod_agg["Quadrant"] == "Review"].sort_values("Revenue")
+    insight_lines = [
+        f"<b>{q_counts.get('Star', 0)} Star</b> product(s) combine above-median revenue and margin — your best all-round performers"
+        + (f", led by <b>{stars.index[0]}</b>." if len(stars) else "."),
+        f"<b>{q_counts.get('Volume Driver', 0)} Volume Driver(s)</b> sell well but sit below the median margin — good for reach, thinner on profit.",
+        f"<b>{q_counts.get('Growth Opportunity', 0)} Growth Opportunity(ies)</b> have strong margins but low volume — candidates for wider distribution.",
+        f"<b>{q_counts.get('Review', 0)} product(s)</b> sit below median on both revenue and margin"
+        + (f", starting with <b>{review.index[0]}</b> — worth a pricing or delisting review." if len(review) else "."),
+    ]
+    st.markdown('<div class="section-head">AI Insight</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="narrative-box">' + "<br>".join(insight_lines) + "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="section-head">Product Detail</div>', unsafe_allow_html=True)
+    detail_cols = ["Category", "Revenue", "Profit", "Orders", "Margin", "Quadrant"] if "Category" in prod_agg.columns \
+                  else ["Revenue", "Profit", "Orders", "Margin", "Quadrant"]
+    detail = prod_agg[detail_cols].sort_values("Revenue", ascending=False).reset_index()
+    detail["Revenue"] = detail["Revenue"].map(fmt)
+    detail["Profit"]  = detail["Profit"].map(fmt)
+    detail["Orders"]  = detail["Orders"].map(lambda v: f"{int(v):,}")
+    detail["Margin"]  = detail["Margin"].map(lambda v: f"{v:.1f}%")
+    st.dataframe(detail, use_container_width=True, height=min(420, 46 + 38 * len(detail)), hide_index=True)
+
+
 def render_sales_by_location():
     """
     Dedicated 'Sales by Location' page — its own nav item, separate from
@@ -3218,6 +3506,10 @@ def render_sales_by_location():
     with map_col:
         fig = _build_sales_map_figure(mappable, metric_col, metric_choice)
         st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            f"🟢 Top city · 🔵 Mid-range · 🔴 Weakest — bubble size scales with {metric_choice.lower()}. "
+            f"Hover any bubble for rank, share of total, and the full metric breakdown."
+        )
         if unmapped:
             st.caption(f"Not shown on map (unrecognized location): {', '.join(unmapped)}")
     with panel_col:
@@ -3735,6 +4027,7 @@ NAV_PAGES = [
     "AI Analyst",
     "Data Explorer",
     "Sales by Location",
+    "Product Analytics",
 ]
 
 
@@ -4089,6 +4382,9 @@ _missing_operations_cols = [c for c in OPTIONAL_OPERATIONS_COLS if c not in df.c
 def render_executive_overview():
     page_header("Executive Overview", "Real-Time Business Snapshot · Developed by Ayush Mishra")
 
+    st.markdown('<div class="section-head">Executive Summary</div>', unsafe_allow_html=True)
+    narrative(f"<b>Business Summary:</b> {compute_executive_summary(df, kpis)}")
+
     st.markdown('<div class="section-head">Key Performance Indicators</div>', unsafe_allow_html=True)
     avg_delivery = delivery["avg"]
 
@@ -4157,14 +4453,50 @@ def render_executive_overview():
         f"while running targeted promotions in <b>{kpis['city_rev'].index[-1]}</b>, your weakest region."
     )
 
+    _anomaly = detect_top_anomaly(df)
+    if _anomaly:
+        st.markdown(
+            f'<div class="missing-box">⚠ <b>Anomaly Detected:</b> {_anomaly["product"]} in '
+            f'{_anomaly["city"]} ({_anomaly["category"]}) shows an unusual revenue {_anomaly["direction"]} — '
+            f'{fmt(_anomaly["revenue"])} (Z-score {_anomaly["z"]:.1f} vs the rest of the current view). '
+            f'Worth a quick data-quality or demand check.</div>',
+            unsafe_allow_html=True,
+        )
+
+    with st.expander("🔍 Why did this happen? — dimension breakdown"):
+        _why_ctx = _bb_context(df)
+        _why_dim = st.selectbox("Explain a specific:", ["City", "Category", "Product"], key="why_dim_choice")
+        _why_bullets, _why_name = [], None
+        if _why_dim == "City" and kpis["city_rev"] is not None and len(kpis["city_rev"]):
+            _why_name = st.selectbox("Choose:", kpis["city_rev"].index.tolist(), key="why_city_choice")
+            _why_bullets = _dimension_evidence("city", _why_name, _why_ctx, df)
+        elif _why_dim == "Category" and kpis["cat_rev"] is not None and len(kpis["cat_rev"]):
+            _why_name = st.selectbox("Choose:", kpis["cat_rev"].index.tolist(), key="why_cat_choice")
+            _why_bullets = _dimension_evidence("category", _why_name, _why_ctx, df)
+        elif _why_dim == "Product":
+            _prod_options = df["Product Name"].unique().tolist()
+            if _prod_options:
+                _why_name = st.selectbox("Choose:", _prod_options, key="why_prod_choice")
+                _why_bullets = _dimension_evidence("product", _why_name, _why_ctx, df)
+        if _why_bullets:
+            for _b in _why_bullets:
+                st.markdown(f"- {_b}")
+        else:
+            st.caption("Not enough data to explain this selection.")
+
     st.markdown('<div class="section-head">SALES SNAPSHOT</div>', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         city_data = df.groupby("City")["Total Revenue"].sum().sort_values(ascending=False).reset_index()
+        city_data["Share %"] = city_data["Total Revenue"] / city_data["Total Revenue"].sum() * 100
         fig = px.bar(city_data, x="City", y="Total Revenue", color="City",
-                     color_discrete_map=CITY_CLR, title="Revenue by City", labels={"Total Revenue":"Revenue (₹)"})
+                     color_discrete_map=CITY_CLR, title="Revenue by City", labels={"Total Revenue":"Revenue (₹)"},
+                     custom_data=["Share %"])
         fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
-        fig.update_traces(marker_line_width=0, opacity=0.85)
+        fig.update_traces(marker_line_width=0, opacity=0.85,
+                           hovertemplate="<b>%{x}</b><br>Revenue: ₹%{y:,.0f}<br>Share of total: %{customdata[0]:.1f}%<extra></extra>")
+        fig.add_hline(y=city_data["Total Revenue"].mean(), line_dash="dot", line_color="rgba(255,255,255,.35)",
+                      line_width=1, annotation_text="avg", annotation_font=dict(size=9, color="#9AA4B2"))
         fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
         st.plotly_chart(fig, use_container_width=True)
     with col2:
@@ -4231,6 +4563,37 @@ def render_sales_analytics():
         f"<b>What to do:</b> protect top performers, and use the discount curve to avoid over-discounting."
     )
 
+    # ── Category Performance — smart metric selector instead of one fixed chart ──
+    st.markdown('<div class="section-head">Category Performance</div>', unsafe_allow_html=True)
+    st.caption("Switch metric to see which category leads on each measure.")
+    _cat_metric = st.radio(
+        "Performance Metric", ["Revenue", "Profit", "Orders", "Margin"],
+        horizontal=True, key="cat_perf_metric", label_visibility="collapsed",
+    )
+    _cat_agg = df.groupby("Category").agg(
+        Revenue=("Total Revenue", "sum"), Profit=("Profit", "sum"), Orders=("Orders", "sum"),
+    )
+    _cat_agg["Margin"] = np.where(_cat_agg["Revenue"] > 0, _cat_agg["Profit"] / _cat_agg["Revenue"] * 100, 0)
+    _cat_sorted = _cat_agg.sort_values(_cat_metric, ascending=False)
+    _cat_is_pct = _cat_metric == "Margin"
+    _cat_text = [f"{v:.1f}%" for v in _cat_sorted[_cat_metric]] if _cat_is_pct else [fmt(v) for v in _cat_sorted[_cat_metric]]
+    fig = go.Figure(go.Bar(
+        x=_cat_sorted.index.tolist(), y=_cat_sorted[_cat_metric],
+        marker_color=[CAT_CLR.get(c, "#6366f1") for c in _cat_sorted.index],
+        marker_line_width=0, opacity=0.85, text=_cat_text, textposition="outside",
+        textfont=dict(color="#F1F5F9", size=10),
+    ))
+    fig.update_layout(**PLOTLY_BASE,
+        title=dict(text=f"Category {_cat_metric}", font=dict(color="#F1F5F9", size=13)),
+        height=280, showlegend=False,
+        yaxis=dict(ticksuffix="%" if _cat_is_pct else "", tickprefix="" if _cat_is_pct else "₹", **_AXIS_DEFAULTS))
+    st.plotly_chart(fig, use_container_width=True)
+    _cat_best, _cat_worst = _cat_sorted.index[0], _cat_sorted.index[-1]
+    st.caption(
+        f"**{_cat_best}** leads on {_cat_metric.lower()}; **{_cat_worst}** is weakest on this measure — "
+        f"{'raise pricing or trim discounting there' if _cat_metric == 'Margin' else 'review pricing or promotion mix for it'}."
+    )
+
     col1, col2 = st.columns(2)
     with col1:
         top_prod = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False).head(10).reset_index()
@@ -4277,6 +4640,24 @@ def render_sales_analytics():
         fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#F1F5F9")
         fig.update_yaxes(tickprefix="₹", secondary_y=False)
         st.plotly_chart(fig, use_container_width=True)
+
+    if "Influencer Active" in df.columns:
+        st.markdown('<div class="section-head">Marketing / Influencer Performance Ranking</div>', unsafe_allow_html=True)
+        _mk = df.groupby("Influencer Active").agg(
+            Orders=("Orders", "sum"), Revenue=("Total Revenue", "sum"),
+        ).reindex(["Yes", "No"]).dropna(how="all")
+        _mk["AOV"] = np.where(_mk["Orders"] > 0, _mk["Revenue"] / _mk["Orders"], 0)
+        _mk_display = pd.DataFrame({
+            "Marketing Status": ["Influencer-Active" if i == "Yes" else "Organic (No Influencer)" for i in _mk.index],
+            "Orders": _mk["Orders"].map(lambda v: f"{int(v):,}"),
+            "Revenue": _mk["Revenue"].map(fmt),
+            "AOV": _mk["AOV"].map(fmt),
+        })
+        st.dataframe(_mk_display, use_container_width=True, hide_index=True)
+        st.caption(
+            "Ranked by revenue contribution. **ROI is not shown** — the dataset has no marketing-spend/cost "
+            "column, so a true return-on-spend figure can't be calculated reliably from what's available."
+        )
 
     price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
     price_data["Price Tier"] = price_data["Price Tier"].astype(str)
@@ -5082,6 +5463,7 @@ _PAGE_RENDERERS = {
     "AI Analyst":              render_ai_analyst,
     "Data Explorer":           render_data_explorer,
     "Sales by Location":       render_sales_by_location,
+    "Product Analytics":       render_product_analytics,
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
