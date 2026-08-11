@@ -685,6 +685,136 @@ def _hex_to_rgba(hex_color: str, alpha: float = 0.08) -> str:
     return f"rgba({r},{g},{b},{alpha})"
 
 
+def _lighten_hex(hex_color: str, amount: int = 12) -> str:
+    """Nudges a hex color lighter by a fixed amount per channel — used to
+    derive the secondary sidebar shade for the Custom theme automatically,
+    since the customization panel doesn't expose a separate picker for it."""
+    if not (isinstance(hex_color, str) and hex_color.startswith("#") and len(hex_color) == 7):
+        return hex_color
+    r = min(255, int(hex_color[1:3], 16) + amount)
+    g = min(255, int(hex_color[3:5], 16) + amount)
+    b = min(255, int(hex_color[5:7], 16) + amount)
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def _relative_luminance(hex_color: str) -> float:
+    def _chan(c):
+        c = c / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+    return 0.2126 * _chan(r) + 0.7152 * _chan(g) + 0.0722 * _chan(b)
+
+
+def _contrast_ratio(hex1: str, hex2: str) -> float:
+    """WCAG-style contrast ratio between two hex colors — used to warn the
+    user in the theme customizer if their chosen Text/Background pair would
+    be hard to read (Part 17: 'Do not allow customization to reduce data
+    readability')."""
+    try:
+        l1, l2 = _relative_luminance(hex1), _relative_luminance(hex2)
+    except Exception:
+        return 21.0  # can't evaluate — don't block the user with a false warning
+    lighter, darker = max(l1, l2), min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── CUSTOMIZE DASHBOARD — THEME PRESETS
+# Every value below maps directly onto the CSS custom properties (--nova-*)
+# already defined in the main stylesheet above, so switching themes reaches
+# every component that already references var(--nova-...) — KPI cards,
+# section headers, narrative/insight boxes, chat bubbles, sidebar, buttons,
+# badges — with no changes to any of that existing CSS or Python.
+# Known limitation: a handful of page-specific HTML snippets elsewhere in
+# the app (e.g. the Data Trust Center score card, a few summary cards) use
+# literal hex colors rather than var(--nova-...) and won't reflect a theme
+# change. Converting those is a good follow-up, not done in this pass.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+THEME_PRESETS = {
+    "Nova Blue": dict(       # the current/original NovaMS look — default
+        primary="#1D4DFF", bg="#0A0C0F", card="#14171C", sidebar="#07090B",
+        sidebar2="#14181D", text="#F1F5F9", muted="#9AA4B2",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#262B33",
+    ),
+    "Executive Dark": dict(
+        primary="#4F6BFF", bg="#0B0D12", card="#171A22", sidebar="#0A0C11",
+        sidebar2="#171B24", text="#F5F7FA", muted="#98A2B3",
+        success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#262B33",
+    ),
+    "Growth Green": dict(
+        primary="#16A34A", bg="#0A0F0C", card="#131C16", sidebar="#070B08",
+        sidebar2="#101A14", text="#F1F5F9", muted="#9CA8A1",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#223028",
+    ),
+    "Premium Purple": dict(
+        primary="#7C3AED", bg="#0C0A0F", card="#17141C", sidebar="#0A080D",
+        sidebar2="#1C1826", text="#F5F3F7", muted="#A79FB0",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#2A2433",
+    ),
+    "Minimal Light": dict(
+        primary="#2563EB", bg="#F8FAFC", card="#FFFFFF", sidebar="#F1F5F9",
+        sidebar2="#E9EEF5", text="#0F172A", muted="#64748B",
+        success="#16A34A", warning="#D97706", danger="#DC2626", border="#E2E8F0",
+    ),
+    "Commerce": dict(
+        primary="#EA580C", bg="#0B0D12", card="#151A22", sidebar="#0A0C11",
+        sidebar2="#171B24", text="#F5F1EA", muted="#A6A196",
+        success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#262B33",
+    ),
+}
+
+_theme_name = st.session_state.get("_theme_name", "Nova Blue")
+_theme_vars = dict(THEME_PRESETS.get(_theme_name, THEME_PRESETS["Nova Blue"]))
+if _theme_name == "Custom":
+    # Live preview: read straight from each color-picker's own widget state
+    # (set the instant the user picks a color, before this rerun even
+    # starts) rather than waiting for an explicit "Apply" click — so moving
+    # any picker updates the whole dashboard immediately.
+    _cd = THEME_PRESETS["Nova Blue"]
+    _c_primary = st.session_state.get("_tc_primary", _cd["primary"])
+    _c_bg      = st.session_state.get("_tc_bg", _cd["bg"])
+    _c_card    = st.session_state.get("_tc_card", _cd["card"])
+    _c_sidebar = st.session_state.get("_tc_sidebar", _cd["sidebar"])
+    _c_text    = st.session_state.get("_tc_text", _cd["text"])
+    _c_muted   = st.session_state.get("_tc_muted", _cd["muted"])
+    _c_success = st.session_state.get("_tc_success", _cd["success"])
+    _c_warning = st.session_state.get("_tc_warning", _cd["warning"])
+    _c_danger  = st.session_state.get("_tc_danger", _cd["danger"])
+    _theme_vars.update(dict(
+        primary=_c_primary, bg=_c_bg, card=_c_card, sidebar=_c_sidebar,
+        text=_c_text, muted=_c_muted, success=_c_success, warning=_c_warning, danger=_c_danger,
+        border=_hex_to_rgba(_c_muted, .3), sidebar2=_lighten_hex(_c_sidebar, 12),
+    ))
+
+st.markdown(f"""
+<style>
+/* Theme override injected by "Customize Dashboard" (sidebar). Targets the
+   same :root selector as the base stylesheet above with equal specificity —
+   coming later in source order, it wins for exactly these variables and
+   nothing else. No existing selector/class is modified. */
+:root {{
+  --nova-ink: {_theme_vars['text']};
+  --nova-ink-soft: {_theme_vars['muted']};
+  --nova-muted: {_theme_vars['muted']};
+  --nova-border: {_theme_vars['border']};
+  --nova-bg: {_theme_vars['bg']};
+  --nova-card: {_theme_vars['card']};
+  --nova-blue: {_theme_vars['primary']};
+  --nova-blue-tint: {_hex_to_rgba(_theme_vars['primary'], .14)};
+  --nova-green: {_theme_vars['success']};
+  --nova-green-tint: {_hex_to_rgba(_theme_vars['success'], .14)};
+  --nova-red: {_theme_vars['danger']};
+  --nova-red-tint: {_hex_to_rgba(_theme_vars['danger'], .14)};
+  --nova-amber: {_theme_vars['warning']};
+  --nova-amber-tint: {_hex_to_rgba(_theme_vars['warning'], .14)};
+  --nova-sidebar: {_theme_vars['sidebar']};
+  --nova-sidebar-2: {_theme_vars['sidebar2']};
+}}
+</style>
+""", unsafe_allow_html=True)
+
+
 _LEGEND_DEFAULT = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10))
 PLOTLY_BASE = {k: v for k, v in PLOTLY_LAYOUT.items()
                if k not in ("xaxis", "yaxis", "legend")}
@@ -4224,6 +4354,57 @@ with st.sidebar:
     st.markdown("#### ⚙️ Settings")
     show_raw     = st.checkbox("Show Raw Data Table (Executive Overview)", value=False)
     show_stats   = st.checkbox("Show Statistical Analysis (Sales Analytics)", value=True)
+
+    st.markdown("---")
+    with st.expander("🎨 Customize Dashboard"):
+        # Reset must happen BEFORE the theme widgets below are instantiated
+        # this run — same safe flag+rerun pattern used for filter resets.
+        if st.session_state.pop("_reset_theme_trigger", False):
+            st.session_state["_theme_name"] = "Nova Blue"
+            for _tk in ["_tc_primary", "_tc_bg", "_tc_card", "_tc_sidebar", "_tc_text",
+                        "_tc_muted", "_tc_success", "_tc_warning", "_tc_danger"]:
+                st.session_state.pop(_tk, None)
+            st.session_state.pop("_theme_custom_colors", None)
+
+        _theme_choice = st.selectbox(
+            "Theme", list(THEME_PRESETS.keys()) + ["Custom"], key="_theme_name",
+            help="Presets recolor cards, buttons, badges, and the sidebar. "
+                 "A few page-specific summary cards keep their original colors for now.",
+        )
+
+        if _theme_choice == "Custom":
+            st.caption("Pick any color below — the whole dashboard updates immediately.")
+            _base = THEME_PRESETS["Nova Blue"]
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                _c_primary = st.color_picker("Primary / Accent", _base["primary"], key="_tc_primary")
+                _c_bg      = st.color_picker("Background",       _base["bg"],      key="_tc_bg")
+                _c_card    = st.color_picker("Card",             _base["card"],    key="_tc_card")
+                _c_sidebar = st.color_picker("Sidebar",          _base["sidebar"], key="_tc_sidebar")
+            with cc2:
+                _c_text    = st.color_picker("Text",             _base["text"],    key="_tc_text")
+                _c_muted   = st.color_picker("Muted Text",       _base["muted"],   key="_tc_muted")
+                _c_success = st.color_picker("Success",          _base["success"], key="_tc_success")
+                _c_warning = st.color_picker("Warning",          _base["warning"], key="_tc_warning")
+            _c_danger = st.color_picker("Danger", _base["danger"], key="_tc_danger")
+
+            _ratio = _contrast_ratio(_c_text, _c_bg)
+            if _ratio < 4.5:
+                st.warning(f"⚠️ Low contrast between Text and Background ({_ratio:.1f}:1) may reduce readability.")
+
+            if st.button("💾 Save Theme", use_container_width=True, key="_save_theme_btn"):
+                st.session_state["_theme_custom_colors"] = dict(
+                    primary=_c_primary, bg=_c_bg, card=_c_card, sidebar=_c_sidebar,
+                    text=_c_text, muted=_c_muted, success=_c_success, warning=_c_warning, danger=_c_danger,
+                    border=_hex_to_rgba(_c_muted, .3), sidebar2=_lighten_hex(_c_sidebar, 12),
+                )
+                st.success("Saved for this session.")
+        else:
+            st.caption(f"Using the **{_theme_choice}** preset.")
+
+        if st.button("↺ Reset to Default Theme", use_container_width=True, key="_reset_theme_btn"):
+            st.session_state["_reset_theme_trigger"] = True
+            st.rerun()
 
     st.markdown("---")
     st.markdown("#### 🤖 BlinkBot AI Mode")
