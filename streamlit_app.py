@@ -5632,7 +5632,78 @@ def render_data_explorer():
     dtype_df.columns = ["Column", "Type"]
     st.dataframe(dtype_df, use_container_width=True, height=min(350, 40 + 32*len(dtype_df)))
 
+def render_data_engine():
+    """
+    Data Engine — schema-agnostic profiling for the currently active
+    dataset. Reuses page_header()/narrative()/kpi_card() for visual
+    consistency and the already-filtered `df`, so it stays in sync with
+    the sidebar filters. Does not touch any existing calculation.
+    """
+    page_header("Data Engine", "Automatic profiling · quality · relationships · domain detection")
 
+    narrative(
+        "<b>What this does:</b> runs the dataset through a schema-agnostic engine that profiles "
+        "every column, scores data quality, discovers table relationships, detects the likely "
+        "business domain, and calculates whichever metrics the columns actually support — "
+        "without sending any raw rows to an LLM."
+    )
+
+    if st.button("🔍 Run Data Engine on current dataset", type="primary"):
+        with st.spinner("Profiling, validating, and analyzing..."):
+            engine = DataEngine()
+            st.session_state["_data_engine_output"] = engine.run(dataframes={"active_dataset": df})
+
+    output = st.session_state.get("_data_engine_output")
+    if not output:
+        st.info("Click the button above to profile the current (filtered) dataset.")
+        return
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1: kpi_card("Detected Domain", output["domain"].replace("_", " ").title())
+    with m2: kpi_card("Domain Confidence", f"{output['domain_confidence']*100:.0f}%")
+    with m3: kpi_card("Data Quality Score", f"{output['data_quality_score']}/100")
+    with m4: kpi_card("Rows Profiled", f"{output['rows']:,}")
+
+    st.markdown('<div class="section-head">Calculated Metrics</div>', unsafe_allow_html=True)
+    if output["metrics"]:
+        met_df = pd.DataFrame([
+            {"Metric": k.replace("_", " ").title(), "Value": round(v["value"], 2), "Formula": v["formula"]}
+            for k, v in output["metrics"].items()
+        ])
+        st.dataframe(met_df, use_container_width=True, hide_index=True)
+    else:
+        st.caption("No metrics could be computed from the available columns.")
+
+    st.markdown('<div class="section-head">Data Quality Issues</div>', unsafe_allow_html=True)
+    for table_name, q in output["quality"].items():
+        if q["issues"]:
+            with st.expander(f"{table_name} — {q['score']}/100 ({q['status']})"):
+                for issue in q["issues"]:
+                    st.markdown(f"- **[{issue['severity']}]** {issue['issue']}" +
+                                (f" — `{issue['column']}`" if issue.get("column") else ""))
+        else:
+            st.success(f"{table_name} — {q['score']}/100, no issues detected.")
+
+    if output["relationships"]:
+        st.markdown('<div class="section-head">Discovered Relationships</div>', unsafe_allow_html=True)
+        rel_df = pd.DataFrame(output["relationships"])
+        st.dataframe(rel_df, use_container_width=True, hide_index=True)
+
+    st.markdown('<div class="section-head">Recommended Dashboard Sections</div>', unsafe_allow_html=True)
+    st.write(" · ".join(output["dashboard_recommendations"]["recommended_sections"]))
+
+    st.markdown('<div class="section-head">AI Interpretation (optional)</div>', unsafe_allow_html=True)
+    st.caption("Uses the same Claude key as BlinkBot's LLM Mode, if enabled in the sidebar. "
+               "Only the compact summary below is sent — never raw rows.")
+    context = build_llm_context(output)
+    with st.expander("View the exact context sent to Claude"):
+        st.json(context)
+    if st.button("🧠 Interpret with Claude"):
+        with st.spinner("Interpreting..."):
+            st.markdown(interpret_with_claude(context, api_key=api_key if use_ai_mode else None))
+
+    with st.expander("Full structured JSON output"):
+        st.json(output)
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── MAIN — DISPATCH TO ACTIVE PAGE
 # ══════════════════════════════════════════════════════════════════════════════════
