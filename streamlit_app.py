@@ -5722,6 +5722,7 @@ _PAGE_RENDERERS = {
     "Data Explorer":           render_data_explorer,
     "Sales by Location":       render_sales_by_location,
     "Product Analytics":       render_product_analytics,
+    "Data Engine":             render_data_engine,
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
