@@ -18,6 +18,11 @@ import warnings, io, os, json, requests
 
 warnings.filterwarnings("ignore")
 
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(__file__))
+from data_engine.engine import DataEngine
+from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
+
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
