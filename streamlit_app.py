@@ -20,9 +20,22 @@ warnings.filterwarnings("ignore")
 
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(__file__))
-from data_engine.engine import DataEngine
-from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
 
+try:
+    from data_engine.engine import DataEngine
+    _DATA_ENGINE_AVAILABLE = True
+except ImportError as _e:
+    DataEngine = None
+    _DATA_ENGINE_AVAILABLE = False
+    _DATA_ENGINE_IMPORT_ERROR = str(_e)
+
+try:
+    from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
+    _SEMANTIC_INTERPRETER_AVAILABLE = True
+except ImportError as _e:
+    build_llm_context = None
+    interpret_with_claude = None
+    _SEMANTIC_INTERPRETER_AVAILABLE = False
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
