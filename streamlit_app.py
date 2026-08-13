@@ -4163,6 +4163,7 @@ NAV_PAGES = [
     "Data Explorer",
     "Sales by Location",
     "Product Analytics",
+    "Data Engine",
 ]
 
 
