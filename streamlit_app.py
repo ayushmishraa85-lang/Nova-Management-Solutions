@@ -30,6 +30,11 @@ except ImportError as _e:
     _DATA_ENGINE_IMPORT_ERROR = str(_e)
 
 try:
+    from data_engine.persona import PersonaInsightGenerator
+except ImportError:
+    PersonaInsightGenerator = None
+
+try:
     from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
     _SEMANTIC_INTERPRETER_AVAILABLE = True
 except ImportError as _e:
@@ -3779,7 +3784,19 @@ def render_data_trust_center():
         st.caption("No issues detected — this dataset looks clean.")
 
     st.markdown('<div class="section-head">Import</div>', unsafe_allow_html=True)
-    mode = st.radio("Import mode", ["Replace Current Dataset", "Add to Current Dataset"], horizontal=True, key="import_mode")
+    if not compat["can_import"]:
+        narrative(
+            "This file doesn't match NovaMS's built-in quick-commerce columns — that's fine. "
+            "It will be imported into <b>Universal Dataset mode</b>: NovaMS auto-detects what each "
+            "column represents (Measure / Dimension / Date / Identifier) and builds a dashboard "
+            "around whatever this file actually contains, with a Manager / HR / Analyst view to choose from."
+        )
+    mode = st.radio(
+        "Import mode", ["Replace Current Dataset", "Add to Current Dataset"], horizontal=True,
+        key="import_mode", disabled=not compat["can_import"],
+        help="'Add to Current Dataset' only applies to Zepto-compatible files with matching columns."
+             if not compat["can_import"] else None,
+    )
 
     _db_conn_for_save = get_db_connection()
     save_to_db = False
@@ -3790,41 +3807,67 @@ def render_data_trust_center():
 
     b1, b2, b3 = st.columns(3)
     with b1:
-        apply_clicked = st.button(
-            "Apply Recommended Fixes & Import", type="primary", use_container_width=True,
-            disabled=not compat["can_import"],
-        )
+        apply_clicked = st.button("Apply Recommended Fixes & Import", type="primary", use_container_width=True)
     with b2:
-        raw_clicked = st.button("Import Without Fixing", use_container_width=True, disabled=bool(strict_missing))
+        raw_clicked = st.button("Import Without Fixing", use_container_width=True)
     with b3:
         cancel_clicked = st.button("Cancel — Keep Current Dataset", use_container_width=True)
 
     if apply_clicked or raw_clicked:
         ids = selected_ids if apply_clicked else ({"colmap"} if colmap else set())
         cleaned_raw, log = apply_cleaning_suggestions(raw_df, ids, colmap, findings)
-        try:
-            _validate_columns(cleaned_raw, filename)
-            cleaned = clean(cleaned_raw)
-        except ValueError as e:
-            st.error(f"❌ {e}")
-            return
 
-        if mode == "Add to Current Dataset":
-            base    = st.session_state.get("_active_df_raw")
-            base    = base if base is not None else load_default()
-            cleaned = pd.concat([base, cleaned], ignore_index=True)
+        if compat["can_import"]:
+            # ── Zepto-compatible path — identical to previous behavior ──
+            try:
+                _validate_columns(cleaned_raw, filename)
+                cleaned = clean(cleaned_raw)
+            except ValueError as e:
+                st.error(f"❌ {e}")
+                return
 
-        new_trust = compute_trust_score(cleaned_raw, compute_data_quality_findings(cleaned_raw), compat)
-        meta = dict(
-            name=filename, source=("Cleaned Dataset" if ids else "User Uploaded Dataset"),
-            rows=len(cleaned), trust_score=new_trust["score"], status=new_trust["status"],
-        )
+            if mode == "Add to Current Dataset":
+                base    = st.session_state.get("_active_df_raw")
+                base    = base if base is not None else load_default()
+                cleaned = pd.concat([base, cleaned], ignore_index=True)
+
+            new_trust = compute_trust_score(cleaned_raw, compute_data_quality_findings(cleaned_raw), compat)
+            meta = dict(
+                name=filename, source=("Cleaned Dataset" if ids else "User Uploaded Dataset"),
+                rows=len(cleaned), trust_score=new_trust["score"], status=new_trust["status"],
+            )
+            st.session_state["_is_universal_dataset"] = False
+            st.session_state["_universal_engine_output"] = None
+            record_dataset_version(
+                label="Cleaned Import" if ids else "Original Upload",
+                rows=len(cleaned), note="; ".join(log) if log else "Imported as-is",
+            )
+        else:
+            # ── Universal path — any schema, any domain ──
+            if not _DATA_ENGINE_AVAILABLE or DataEngine is None:
+                st.error("❌ The Data Engine module isn't available, so a non-Zepto file can't be imported "
+                         "right now. Check that the `data_engine/` package is present at the repo root.")
+                return
+            engine = DataEngine()
+            engine_output = engine.run(dataframes={filename: cleaned_raw})
+            roles = engine_output["roles"].get(filename, {})
+            cleaned, gen_log = engine.cleaner.clean(cleaned_raw, roles)
+            log = log + gen_log
+
+            meta = dict(
+                name=filename, source="Universal Dataset",
+                rows=len(cleaned), trust_score=engine_output["data_quality_score"],
+                status=engine_output["quality"][filename]["status"],
+            )
+            st.session_state["_is_universal_dataset"] = True
+            st.session_state["_universal_engine_output"] = engine_output
+            record_dataset_version(
+                label="Universal Import", rows=len(cleaned),
+                note="; ".join(log) if log else "Imported as-is (auto-detected schema)",
+            )
+
         st.session_state["_active_df_raw"] = cleaned
         st.session_state["_active_dataset_meta"] = meta
-        record_dataset_version(
-            label="Cleaned Import" if ids else "Original Upload",
-            rows=len(cleaned), note="; ".join(log) if log else "Imported as-is",
-        )
 
         db_note = ""
         if save_to_db and _db_conn_for_save is not None:
@@ -4194,7 +4237,17 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
+    if st.session_state.get("_is_universal_dataset"):
+        st.markdown("""
+        <div style="background:rgba(29,77,255,.1);border:1px solid rgba(29,77,255,.3);
+                    border-radius:10px;padding:10px 12px;font-size:11px;color:#1D4DFF;margin-bottom:10px">
+          🧭 <b>Universal Dataset Mode</b> — this file doesn't match the built-in quick-commerce
+          schema, so NovaMS is showing an auto-built dashboard for its actual columns instead.
+        </div>
+        """, unsafe_allow_html=True)
+        active_page = "Universal Dashboard"
+    else:
+        active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
 
     st.markdown("---")
     st.markdown("#### 📂 Data Source")
@@ -4308,66 +4361,87 @@ with st.sidebar:
     st.markdown("---")
 
     df_raw = st.session_state.get("_active_df_raw")
-    if df_raw is None:
+    if df_raw is None and not st.session_state.get("_is_universal_dataset"):
         df_raw = load_default()
 
-    st.markdown("#### 🔍 Filters")
-
-    # Any pending clear/reset must happen BEFORE the widgets below are
-    # instantiated this run — Streamlit won't allow changing a widget's
-    # session_state value after it's already been created in the same
-    # script pass, so both the "reset all" and "clear one" actions defer
-    # their actual work to the top of the NEXT run via a flag + rerun.
-    if st.session_state.pop("_reset_filters_trigger", False):
-        for _fk in ["filter_city", "filter_cat", "filter_inf", "filter_prod", "filter_search"]:
-            st.session_state.pop(_fk, None)
-    _pending_clear = st.session_state.pop("_clear_single_filter", None)
-    if _pending_clear:
-        st.session_state.pop(_pending_clear, None)
-
-    cities     = ["All"] + sorted(df_raw["City"].unique())
-    categories = ["All"] + sorted(df_raw["Category"].unique())
-    products   = ["All"] + sorted(df_raw["Product Name"].unique())
-
-    sel_city = st.selectbox("City / Region", cities, key="filter_city")
-    sel_cat  = st.selectbox("Category",      categories, key="filter_cat")
-    sel_inf  = st.selectbox("Influencer",    ["All", "Yes", "No"], key="filter_inf")
-    sel_prod = st.selectbox("Product",       products, key="filter_prod")
-    search   = st.text_input("Search product", placeholder="e.g. Maggi...", key="filter_search")
-
-    # Each active filter (City/Region included) gets its own small "✕" clear
-    # option shown as a chip, right below the filters — so the user can drop
-    # a single filter without touching the others or re-selecting "All".
-    _active_filters = []
-    if sel_city != "All":            _active_filters.append(("📍 City/Region", sel_city, "filter_city"))
-    if sel_cat  != "All":            _active_filters.append(("🏷️ Category",    sel_cat,  "filter_cat"))
-    if sel_inf  != "All":            _active_filters.append(("⚡ Influencer",  sel_inf,  "filter_inf"))
-    if sel_prod != "All":            _active_filters.append(("📦 Product",     sel_prod, "filter_prod"))
-    if search and search.strip():    _active_filters.append(("🔎 Search",      search.strip(), "filter_search"))
-
-    if _active_filters:
-        st.markdown(
-            f'<div style="font-size:9.5px;font-weight:700;color:#6B7688;text-transform:uppercase;'
-            f'letter-spacing:.08em;margin:12px 0 6px">{len(_active_filters)} Active Filter(s)</div>',
-            unsafe_allow_html=True,
+    if st.session_state.get("_is_universal_dataset"):
+        # Universal datasets have no guaranteed City/Category/Product columns
+        # to filter on, so the Zepto-specific filter widgets are skipped
+        # entirely — safe fallback values keep the rest of the script from
+        # crashing on undefined names, and the Universal Dashboard has its
+        # own persona control instead.
+        sel_city, sel_cat, sel_inf, sel_prod, search = "All", "All", "All", "All", ""
+        st.markdown("#### 👤 Persona")
+        persona = st.radio(
+            "View this dataset as", ["Manager", "HR", "Analyst"],
+            key="universal_persona", horizontal=True,
         )
-        for label, val, fkey in _active_filters:
-            cc1, cc2 = st.columns([5, 1])
-            with cc1:
-                st.markdown(f"""
-                <div style="background:rgba(29,77,255,.1);border:1px solid rgba(29,77,255,.25);
-                            border-radius:8px;padding:6px 10px;font-size:11px;color:#F1F5F9;
-                            overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px">
-                  <span style="color:#9AA4B2">{label}:</span> <b>{val}</b>
-                </div>
-                """, unsafe_allow_html=True)
-            with cc2:
-                if st.button("✕", key=f"clear_{fkey}", use_container_width=True, help=f"Clear {label} filter"):
-                    st.session_state["_clear_single_filter"] = fkey
-                    st.rerun()
-        if st.button("↺ Reset All Filters", use_container_width=True, key="reset_filters_btn"):
-            st.session_state["_reset_filters_trigger"] = True
+        st.caption("Switches which insights are surfaced below — the underlying data is unchanged.")
+        if st.button("↩ Exit Universal Mode — Load Demo Dataset", use_container_width=True, key="exit_universal_btn"):
+            st.session_state["_active_df_raw"] = None
+            st.session_state["_active_dataset_meta"] = None
+            st.session_state["_is_universal_dataset"] = False
+            st.session_state["_universal_engine_output"] = None
             st.rerun()
+    else:
+        persona = "Manager"  # unused outside Universal mode; defined so the name always exists
+        st.markdown("#### 🔍 Filters")
+
+        # Any pending clear/reset must happen BEFORE the widgets below are
+        # instantiated this run — Streamlit won't allow changing a widget's
+        # session_state value after it's already been created in the same
+        # script pass, so both the "reset all" and "clear one" actions defer
+        # their actual work to the top of the NEXT run via a flag + rerun.
+        if st.session_state.pop("_reset_filters_trigger", False):
+            for _fk in ["filter_city", "filter_cat", "filter_inf", "filter_prod", "filter_search"]:
+                st.session_state.pop(_fk, None)
+        _pending_clear = st.session_state.pop("_clear_single_filter", None)
+        if _pending_clear:
+            st.session_state.pop(_pending_clear, None)
+
+        cities     = ["All"] + sorted(df_raw["City"].unique())
+        categories = ["All"] + sorted(df_raw["Category"].unique())
+        products   = ["All"] + sorted(df_raw["Product Name"].unique())
+
+        sel_city = st.selectbox("City / Region", cities, key="filter_city")
+        sel_cat  = st.selectbox("Category",      categories, key="filter_cat")
+        sel_inf  = st.selectbox("Influencer",    ["All", "Yes", "No"], key="filter_inf")
+        sel_prod = st.selectbox("Product",       products, key="filter_prod")
+        search   = st.text_input("Search product", placeholder="e.g. Maggi...", key="filter_search")
+
+        # Each active filter (City/Region included) gets its own small "✕" clear
+        # option shown as a chip, right below the filters — so the user can drop
+        # a single filter without touching the others or re-selecting "All".
+        _active_filters = []
+        if sel_city != "All":            _active_filters.append(("📍 City/Region", sel_city, "filter_city"))
+        if sel_cat  != "All":            _active_filters.append(("🏷️ Category",    sel_cat,  "filter_cat"))
+        if sel_inf  != "All":            _active_filters.append(("⚡ Influencer",  sel_inf,  "filter_inf"))
+        if sel_prod != "All":            _active_filters.append(("📦 Product",     sel_prod, "filter_prod"))
+        if search and search.strip():    _active_filters.append(("🔎 Search",      search.strip(), "filter_search"))
+
+        if _active_filters:
+            st.markdown(
+                f'<div style="font-size:9.5px;font-weight:700;color:#6B7688;text-transform:uppercase;'
+                f'letter-spacing:.08em;margin:12px 0 6px">{len(_active_filters)} Active Filter(s)</div>',
+                unsafe_allow_html=True,
+            )
+            for label, val, fkey in _active_filters:
+                cc1, cc2 = st.columns([5, 1])
+                with cc1:
+                    st.markdown(f"""
+                    <div style="background:rgba(29,77,255,.1);border:1px solid rgba(29,77,255,.25);
+                                border-radius:8px;padding:6px 10px;font-size:11px;color:#F1F5F9;
+                                overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:6px">
+                      <span style="color:#9AA4B2">{label}:</span> <b>{val}</b>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with cc2:
+                    if st.button("✕", key=f"clear_{fkey}", use_container_width=True, help=f"Clear {label} filter"):
+                        st.session_state["_clear_single_filter"] = fkey
+                        st.rerun()
+            if st.button("↺ Reset All Filters", use_container_width=True, key="reset_filters_btn"):
+                st.session_state["_reset_filters_trigger"] = True
+                st.rerun()
 
     st.markdown("---")
     st.markdown("#### ⚙️ Settings")
@@ -4535,6 +4609,153 @@ with st.sidebar:
 
 if st.session_state.get("_show_trust_center") and st.session_state.get("_staged_raw_df") is not None:
     render_data_trust_center()
+    st.stop()
+
+
+# ══════════════════════════════════════════════════════════════════════════════════
+# ── UNIVERSAL DASHBOARD  (additive — new rendering path, does not modify any
+# Zepto-specific page below). Any uploaded file that doesn't match NovaMS's
+# built-in quick-commerce schema is routed here instead of the Zepto-specific
+# pages, which assume exact columns like "City"/"Category"/"Total Revenue"
+# exist. Built entirely from whichever Measure/Dimension/Date/Identifier
+# columns the Data Engine actually detects — nothing here is hardcoded to
+# any one industry.
+# ══════════════════════════════════════════════════════════════════════════════════
+
+def _fmt_generic(n, col_name: str = "") -> str:
+    """Formats a number for the Universal Dashboard. Reuses NovaMS's Indian
+    lakh/crore-style formatting only when the column name looks monetary
+    (revenue/price/salary/cost/...), so e.g. a 'toy count' or 'rating'
+    column doesn't get an incorrect currency symbol."""
+    if pd.isna(n):
+        return "—"
+    money_hint = any(k in col_name.lower() for k in ["revenue", "price", "salary", "cost", "amount", "sales", "pay"])
+    if money_hint:
+        return fmt(n)
+    if abs(n) >= 1e7:  return f"{n/1e7:.1f}Cr"
+    if abs(n) >= 1e5:  return f"{n/1e5:.2f}L"
+    if abs(n) >= 1e3:  return f"{n/1e3:.1f}K"
+    return f"{n:,.2f}" if isinstance(n, float) and not float(n).is_integer() else f"{int(n):,}"
+
+
+def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict, persona: str):
+    """Renders a fully dynamic dashboard for any dataset that doesn't match
+    NovaMS's built-in quick-commerce schema — built from whatever roles the
+    Data Engine detects, with a persona-tailored insight briefing."""
+    if raw_df is None or raw_df.empty:
+        page_header("Universal Dashboard", "No data loaded")
+        st.warning("⚠️ No dataset is currently loaded. Upload a file from the sidebar to get started.")
+        return
+    if not _DATA_ENGINE_AVAILABLE or DataEngine is None:
+        st.error("❌ The Data Engine module isn't available. Universal Dataset mode needs the `data_engine/` package.")
+        return
+
+    engine = DataEngine()
+    output = engine.run(dataframes={"active_dataset": raw_df})
+    roles = output["roles"].get("active_dataset", {})
+
+    page_header(
+        f"Universal Dashboard — {persona} View",
+        f"Auto-built from {len(raw_df.columns)} detected column(s) · "
+        f"Domain guess: {output['domain'].replace('_',' ').title()} ({output['domain_confidence']*100:.0f}% confidence)",
+    )
+
+    measures    = [c for c, r in roles.items() if r == "Measure" and pd.api.types.is_numeric_dtype(raw_df[c])]
+    dimensions  = [c for c, r in roles.items() if r == "Dimension"]
+    dates       = [c for c, r in roles.items() if r == "Date"]
+    identifiers = [c for c, r in roles.items() if r == "Identifier"]
+
+    narrative(
+        f"<b>What NovaMS detected:</b> {len(measures)} Measure column(s), {len(dimensions)} Dimension "
+        f"column(s), {len(dates)} Date column(s), {len(identifiers)} Identifier column(s) — out of "
+        f"{len(raw_df.columns)} total. Everything below is generated directly from these roles; nothing "
+        f"about this layout is hardcoded to quick-commerce or any other single industry."
+    )
+
+    if measures:
+        st.markdown('<div class="section-head">Key Metrics</div>', unsafe_allow_html=True)
+        cols = st.columns(min(4, len(measures)) or 1)
+        for i, m in enumerate(measures[:8]):
+            with cols[i % len(cols)]:
+                kpi_card(m, _fmt_generic(raw_df[m].sum(), m), f"avg {_fmt_generic(raw_df[m].mean(), m)} / record")
+    else:
+        st.info("No numeric Measure columns were detected — KPI cards need at least one numeric column.")
+
+    if measures and dimensions:
+        st.markdown('<div class="section-head">Breakdown by Category</div>', unsafe_allow_html=True)
+        primary_measure = measures[0]
+        chart_cols = st.columns(2)
+        for i, dim in enumerate(dimensions[:4]):
+            grp = raw_df.groupby(dim)[primary_measure].sum().sort_values(ascending=False).head(12)
+            if grp.empty:
+                continue
+            fig = go.Figure(go.Bar(
+                x=grp.values, y=grp.index.astype(str).tolist(), orientation="h",
+                marker_color=[PAL[j % len(PAL)] for j in range(len(grp))], marker_line_width=0, opacity=0.85,
+                text=[_fmt_generic(v, primary_measure) for v in grp.values], textposition="outside",
+                textfont=dict(color="#F1F5F9", size=10),
+            ))
+            fig.update_layout(**PLOTLY_BASE,
+                title=dict(text=f"{primary_measure} by {dim}", font=dict(color="#F1F5F9", size=13)),
+                height=280, yaxis=dict(autorange="reversed", **_AXIS_DEFAULTS), showlegend=False)
+            with chart_cols[i % 2]:
+                st.plotly_chart(fig, use_container_width=True)
+
+    if measures and dates:
+        st.markdown('<div class="section-head">Trend Over Time</div>', unsafe_allow_html=True)
+        date_col = dates[0]
+        trend_df = raw_df[[date_col, measures[0]]].dropna().copy()
+        trend_df[date_col] = pd.to_datetime(trend_df[date_col], errors="coerce", format="mixed")
+        trend_df = trend_df.dropna(subset=[date_col]).sort_values(date_col)
+        if len(trend_df) >= 2:
+            daily = trend_df.groupby(trend_df[date_col].dt.date)[measures[0]].sum().reset_index()
+            fig = go.Figure(go.Scatter(
+                x=daily[date_col], y=daily[measures[0]], mode="lines+markers",
+                line=dict(color="#1D4DFF", width=2), marker=dict(size=5),
+            ))
+            fig.update_layout(**PLOTLY_BASE,
+                title=dict(text=f"{measures[0]} over {date_col}", font=dict(color="#F1F5F9", size=13)), height=280)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.caption(f"Not enough valid dates in '{date_col}' to plot a trend.")
+
+    st.markdown(f'<div class="section-head">{persona} Insights</div>', unsafe_allow_html=True)
+    if PersonaInsightGenerator is None:
+        st.info("Persona insights module not found — add `data_engine/persona.py` to enable this section.")
+    else:
+        bullets = PersonaInsightGenerator().generate(raw_df, roles, persona)
+        st.markdown('<div class="narrative-box">' + "<br>".join(f"• {b}" for b in bullets) + "</div>", unsafe_allow_html=True)
+
+    st.markdown('<div class="section-head">Data Quality</div>', unsafe_allow_html=True)
+    q = output["quality"]["active_dataset"]
+    q1, q2, q3 = st.columns(3)
+    with q1: kpi_card("Quality Score", f"{q['score']}/100", q["status"])
+    with q2: kpi_card("Rows", f"{len(raw_df):,}")
+    with q3: kpi_card("Flagged Issues", str(len(q["issues"])))
+    if q["issues"]:
+        with st.expander(f"View {len(q['issues'])} flagged issue(s)"):
+            for issue in q["issues"][:20]:
+                col_note = f" — `{issue['column']}`" if issue.get("column") else ""
+                st.markdown(f"- **[{issue['severity']}]** {issue['issue']}{col_note}")
+
+    st.markdown('<div class="section-head">Detected Column Roles</div>', unsafe_allow_html=True)
+    roles_df = pd.DataFrame({"Column": list(roles.keys()), "Detected Role": list(roles.values())})
+    st.dataframe(roles_df, use_container_width=True, hide_index=True, height=min(300, 46 + 32 * len(roles_df)))
+
+    st.markdown('<div class="section-head">Data Preview</div>', unsafe_allow_html=True)
+    st.dataframe(raw_df.head(50), use_container_width=True, height=320)
+    st.download_button("⬇ Download Dataset (CSV)", raw_df.to_csv(index=False), "novams_universal_dataset.csv", "text/csv")
+
+
+if st.session_state.get("_is_universal_dataset"):
+    render_universal_dashboard(df_raw, st.session_state.get("_universal_engine_output"), persona)
+    st.markdown("""
+    <div class="footer">
+      NovaMS — Nova Management Solutions &nbsp;·&nbsp;
+      Developed by <span class="dev">Ayush Mishra</span> &nbsp;·&nbsp;
+      Universal Dataset Mode
+    </div>
+    """, unsafe_allow_html=True)
     st.stop()
 
 
