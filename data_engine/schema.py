@@ -32,8 +32,13 @@ class SchemaDetector:
         if pd.api.types.is_numeric_dtype(s):
             if any(h in low for h in _MEASURE_HINTS):
                 return "Measure"
-            # low-cardinality numeric columns behave like dimensions (e.g. star ratings)
-            if s.nunique(dropna=True) <= max(10, int(len(s) * 0.02)):
+            # Low-cardinality numeric columns behave like dimensions (e.g. star
+            # ratings 1-5) — but only apply this on datasets with enough rows
+            # that low cardinality is actually meaningful; on small datasets
+            # (<20 rows) almost every numeric column has few unique values,
+            # so the heuristic would misclassify real measures as dimensions.
+            n = len(s)
+            if n >= 20 and s.nunique(dropna=True) <= max(10, int(n * 0.02)):
                 return "Dimension"
             return "Measure"
         if any(h in low for h in _DIMENSION_HINTS):
