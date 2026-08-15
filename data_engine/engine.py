@@ -24,6 +24,8 @@ from .transformer import Transformer
 from .quality import QualityAnalyzer
 from .domain import DomainDetector
 from .relationships import RelationshipDiscoverer
+from .semantic_mapper import SemanticMapper
+from .capabilities import CapabilityEngine
 
 
 class DataEngine:
@@ -36,6 +38,8 @@ class DataEngine:
         self.quality = QualityAnalyzer()
         self.domain_detector = DomainDetector()
         self.relationship_discoverer = RelationshipDiscoverer()
+        self.semantic_mapper = SemanticMapper()
+        self.capability_engine = CapabilityEngine()
 
     def run(self, dataframes: dict) -> dict:
         """dataframes: {table_name: pd.DataFrame, ...} — usually just
@@ -46,6 +50,7 @@ class DataEngine:
 
         quality_by_table, metrics_by_table = {}, {}
         roles_by_table, cleaning_log_by_table = {}, {}
+        semantic_mappings_by_table, capabilities_by_table = {}, {}
         total_rows = 0
         domain_votes = []
 
@@ -60,11 +65,15 @@ class DataEngine:
             q = self.quality.score(profile, issues)
             metrics = self.transformer.compute_metrics(cleaned_df, roles)
             domain, confidence = self.domain_detector.detect(raw_df)
+            semantic_mappings = self.semantic_mapper.map(raw_df, profile["date_columns"])
+            capabilities = self.capability_engine.evaluate(semantic_mappings)
 
             roles_by_table[name] = roles
             quality_by_table[name] = q
             metrics_by_table[name] = metrics
             cleaning_log_by_table[name] = log
+            semantic_mappings_by_table[name] = semantic_mappings
+            capabilities_by_table[name] = capabilities
             total_rows += profile["rows"]
             domain_votes.append((domain, confidence))
 
@@ -92,6 +101,9 @@ class DataEngine:
             roles=roles_by_table,
             relationships=relationships,
             cleaning_log=cleaning_log_by_table,
+            semantic_mappings=semantic_mappings_by_table,
+            capabilities=capabilities_by_table.get(primary_table, {}),
+            capabilities_by_table=capabilities_by_table,
             dashboard_recommendations=self._recommend_sections(
                 best_domain, roles_by_table.get(primary_table, {})
             ),
