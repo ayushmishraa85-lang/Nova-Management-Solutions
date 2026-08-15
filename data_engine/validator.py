@@ -46,7 +46,7 @@ class Validator:
         if dup:
             issues.append(dict(severity="Medium", issue=f"{dup} exact duplicate row(s)", column=None))
 
-        for col in [c for c, r in roles.items() if r == "Dimension" and df[c].dtype == object]:
+        for col in [c for c, r in roles.items() if r == "Dimension" and (pd.api.types.is_object_dtype(df[c]) or pd.api.types.is_string_dtype(df[c]))]:
             issues.extend(self._check_inconsistent_categories(df, col))
 
         return issues
