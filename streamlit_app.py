@@ -4641,7 +4641,10 @@ def _fmt_generic(n, col_name: str = "") -> str:
 def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict, persona: str):
     """Renders a fully dynamic dashboard for any dataset that doesn't match
     NovaMS's built-in quick-commerce schema — built from whatever roles the
-    Data Engine detects, with a persona-tailored insight briefing."""
+    Data Engine detects, with a persona-tailored insight briefing. Every
+    section is gated by the Capability Engine: NovaMS never shows a revenue
+    KPI without a confidently-mapped revenue column, and never shows a trend
+    chart without a confidently-mapped date column — see data_engine/capabilities.py."""
     if raw_df is None or raw_df.empty:
         page_header("Universal Dashboard", "No data loaded")
         st.warning("⚠️ No dataset is currently loaded. Upload a file from the sidebar to get started.")
@@ -4653,6 +4656,8 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
     engine = DataEngine()
     output = engine.run(dataframes={"active_dataset": raw_df})
     roles = output["roles"].get("active_dataset", {})
+    semantic_mappings = output["semantic_mappings"].get("active_dataset", [])
+    capabilities = output["capabilities"]
 
     page_header(
         f"Universal Dashboard — {persona} View",
@@ -4671,6 +4676,22 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
         f"{len(raw_df.columns)} total. Everything below is generated directly from these roles; nothing "
         f"about this layout is hardcoded to quick-commerce or any other single industry."
     )
+
+    st.markdown('<div class="section-head">What This Dataset Can Support</div>', unsafe_allow_html=True)
+    enabled_caps  = [(k, v) for k, v in capabilities.items() if v["enabled"]]
+    disabled_caps = [(k, v) for k, v in capabilities.items() if not v["enabled"]]
+    cap_cols = st.columns(2)
+    with cap_cols[0]:
+        st.markdown("**✓ Enabled**")
+        if enabled_caps:
+            for k, v in enabled_caps:
+                st.markdown(f"- **{k.replace('_',' ').title()}** — {v['reason']}")
+        else:
+            st.caption("No analysis capability was confidently unlocked from this file's columns.")
+    with cap_cols[1]:
+        st.markdown("**✕ Not available for this file**")
+        for k, v in disabled_caps[:6]:
+            st.caption(f"{k.replace('_',' ').title()} — {v['reason']}")
 
     if measures:
         st.markdown('<div class="section-head">Key Metrics</div>', unsafe_allow_html=True)
@@ -4701,7 +4722,9 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
             with chart_cols[i % 2]:
                 st.plotly_chart(fig, use_container_width=True)
 
-    if measures and dates:
+    # Gated by the Capability Engine, not just "does a date column exist" —
+    # a date column with low mapping confidence won't unlock this section.
+    if capabilities.get("time_series_analysis", {}).get("enabled") and measures and dates:
         st.markdown('<div class="section-head">Trend Over Time</div>', unsafe_allow_html=True)
         date_col = dates[0]
         trend_df = raw_df[[date_col, measures[0]]].dropna().copy()
@@ -4741,6 +4764,15 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
     st.markdown('<div class="section-head">Detected Column Roles</div>', unsafe_allow_html=True)
     roles_df = pd.DataFrame({"Column": list(roles.keys()), "Detected Role": list(roles.values())})
     st.dataframe(roles_df, use_container_width=True, hide_index=True, height=min(300, 46 + 32 * len(roles_df)))
+
+    if semantic_mappings:
+        st.markdown('<div class="section-head">Semantic Mapping (with confidence)</div>', unsafe_allow_html=True)
+        st.caption("How each column name was matched to a business concept. Low-confidence matches are flagged "
+                   "as ambiguous rather than silently trusted — they don't unlock any capability above.")
+        sem_df = pd.DataFrame(semantic_mappings)[["original_name", "semantic_name", "confidence", "ambiguous", "reason"]]
+        sem_df.columns = ["Column", "Mapped Concept", "Confidence", "Ambiguous", "Why"]
+        sem_df = sem_df.sort_values("Confidence", ascending=False)
+        st.dataframe(sem_df, use_container_width=True, hide_index=True, height=min(300, 46 + 32 * len(sem_df)))
 
     st.markdown('<div class="section-head">Data Preview</div>', unsafe_allow_html=True)
     st.dataframe(raw_df.head(50), use_container_width=True, height=320)
