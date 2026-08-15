@@ -35,7 +35,7 @@ class Cleaner:
                 if n_missing:
                     out[col] = out[col].fillna(out[col].median())
                     log.append(f"Imputed {n_missing} missing value(s) in '{col}' with the column median")
-            elif role == "Dimension" and out[col].dtype == object:
+            elif role == "Dimension" and (pd.api.types.is_object_dtype(out[col]) or pd.api.types.is_string_dtype(out[col])):
                 n_missing = int(out[col].isna().sum())
                 if n_missing and not out[col].mode().empty:
                     out[col] = out[col].fillna(out[col].mode()[0])
