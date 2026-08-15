@@ -63,7 +63,10 @@ class DataProfiler:
             if pd.api.types.is_datetime64_any_dtype(df[col]):
                 found.append(col)
                 continue
-            if df[col].dtype != object:
+            # Text-column check works whether the column is legacy numpy
+            # object dtype or pandas' newer (>=3.0) default string dtype —
+            # a direct `dtype != object` comparison misses the latter.
+            if pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_bool_dtype(df[col]):
                 continue
             hint = any(k in col.lower() for k in ["date", "time", "created", "updated", "timestamp"])
             if not hint:
