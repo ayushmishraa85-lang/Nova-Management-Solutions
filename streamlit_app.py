@@ -35,6 +35,11 @@ except ImportError:
     PersonaInsightGenerator = None
 
 try:
+    from data_engine.time_intelligence import TimeIntelligence
+except ImportError:
+    TimeIntelligence = None
+
+try:
     from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
     _SEMANTIC_INTERPRETER_AVAILABLE = True
 except ImportError as _e:
@@ -4741,6 +4746,88 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.caption(f"Not enough valid dates in '{date_col}' to plot a trend.")
+
+    # ══════════════════════════════════════════════════════════════════════
+    # ── MONTHLY PERFORMANCE (additive — new section, everything above this
+    # point is untouched). Aggregates by month instead of plotting raw daily
+    # points, and every sub-feature (MoM, YoY, seasonality, forecast) is
+    # independently gated on having enough history — nothing here claims a
+    # trend the data can't actually support.
+    # ══════════════════════════════════════════════════════════════════════
+    if capabilities.get("time_series_analysis", {}).get("enabled") and measures and dates:
+        if TimeIntelligence is None:
+            st.info("Monthly time intelligence module not found — add `data_engine/time_intelligence.py` to enable this section.")
+        else:
+            ti = TimeIntelligence()
+            date_col = dates[0]
+            drs = ti.date_range_summary(raw_df, date_col)
+
+            if drs.get("valid") and drs["distinct_months"] >= 2:
+                st.markdown('<div class="section-head">Monthly Performance</div>', unsafe_allow_html=True)
+                st.caption(
+                    f"Date range detected: **{drs['start'].strftime('%b %Y')} → {drs['end'].strftime('%b %Y')}** "
+                    f"({drs['distinct_years']} year(s), {drs['distinct_months']} month(s), {drs['total_records']:,} dated record(s))."
+                )
+
+                metric_col = st.selectbox("Monthly metric", measures, key="universal_monthly_metric")
+                monthly = ti.build_monthly_table(raw_df, date_col, measures, semantic_mappings)
+
+                if monthly.empty or len(monthly) < 2:
+                    st.info("Not enough distinct months to show monthly trends yet — at least 2 are needed.")
+                else:
+                    mom = ti.mom_growth(monthly, metric_col)
+                    yoy = ti.yoy_growth(monthly, metric_col)
+
+                    k1, k2, k3 = st.columns(3)
+                    with k1:
+                        kpi_card(f"{metric_col} — {mom['current_period']}", _fmt_generic(mom["current_value"], metric_col))
+                    with k2:
+                        growth_txt = f"{mom['growth_pct']:+.1f}%" if mom["growth_pct"] is not None else "—"
+                        kpi_card("MoM Growth", growth_txt, f"vs {mom['previous_period']}")
+                    with k3:
+                        if yoy.get("available"):
+                            yoy_txt = f"{yoy['growth_pct']:+.1f}%" if yoy["growth_pct"] is not None else "—"
+                            kpi_card("YoY Growth", yoy_txt, f"vs {yoy['previous_period']}")
+                        else:
+                            kpi_card("YoY Growth", "—", yoy.get("reason", "Not enough history"))
+
+                    fig_m = go.Figure(go.Scatter(
+                        x=monthly["Year_Month"], y=monthly[metric_col], mode="lines+markers", name="Actual",
+                        line=dict(color="#1D4DFF", width=2), marker=dict(size=6),
+                    ))
+                    fig_m.update_layout(**PLOTLY_BASE,
+                        title=dict(text=f"Monthly {metric_col} Trend", font=dict(color="#F1F5F9", size=13)), height=280)
+                    st.plotly_chart(fig_m, use_container_width=True)
+
+                    fc = ti.forecast_monthly(monthly, metric_col, periods=3)
+                    if fc.get("available"):
+                        fig_fc = go.Figure()
+                        fig_fc.add_trace(go.Scatter(x=fc["actual_periods"], y=fc["actual_values"], mode="lines+markers",
+                            name="ACTUAL", line=dict(color="#1D4DFF", width=2)))
+                        fig_fc.add_trace(go.Scatter(x=fc["forecast_periods"], y=fc["forecast_values"], mode="lines+markers",
+                            name="FORECAST", line=dict(color="#22C55E", width=2, dash="dash")))
+                        fig_fc.update_layout(**PLOTLY_BASE,
+                            title=dict(text=f"{metric_col} Forecast (R²={fc['r2']:.2f})", font=dict(color="#F1F5F9", size=13)), height=280)
+                        st.plotly_chart(fig_fc, use_container_width=True)
+                    else:
+                        st.caption(f"Forecast not shown: {fc.get('reason')}")
+
+                    season = ti.seasonality(monthly, metric_col)
+                    if season.get("available"):
+                        st.markdown(f"**Monthly seasonality for {metric_col} (avg deviation from overall mean):**")
+                        st.caption(" · ".join(f"{m}: {v:+.1f}%" for m, v in season["deviation_by_month"].items()))
+                    else:
+                        st.caption(f"Seasonality not shown: {season.get('reason')}")
+
+                    if dimensions:
+                        dim_col = st.selectbox("Break down by", dimensions, key="universal_monthly_dim")
+                        agg = ti.agg_func_for(semantic_mappings, metric_col)
+                        pivot = ti.category_by_month(raw_df, date_col, dim_col, metric_col, agg)
+                        if not pivot.empty:
+                            st.markdown(f"**{metric_col} by {dim_col}, by month** (last 12 months shown):")
+                            st.dataframe(pivot, use_container_width=True)
+            else:
+                st.caption("Only one distinct month was detected in the date column — monthly trend analysis needs at least 2.")
 
     st.markdown(f'<div class="section-head">{persona} Insights</div>', unsafe_allow_html=True)
     if PersonaInsightGenerator is None:
