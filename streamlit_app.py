@@ -40,6 +40,16 @@ except ImportError:
     TimeIntelligence = None
 
 try:
+    from data_engine.file_detector import classify_file, ALL_SUPPORTED_NOW
+    from data_engine.universal_reader import UniversalReader
+    _UNIVERSAL_READER_AVAILABLE = True
+except ImportError:
+    classify_file = None
+    ALL_SUPPORTED_NOW = ["csv", "xlsx"]
+    UniversalReader = None
+    _UNIVERSAL_READER_AVAILABLE = False
+
+try:
     from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
     _SEMANTIC_INTERPRETER_AVAILABLE = True
 except ImportError as _e:
@@ -4306,31 +4316,92 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
     uploaded = st.file_uploader(
-        "Drag and drop CSV or Excel here",
-        type=["csv", "xlsx"],
-        help="Full preview, validation, and a Data Trust Score are shown before anything "
+        "Drag and drop a data file here",
+        type=ALL_SUPPORTED_NOW if _UNIVERSAL_READER_AVAILABLE else ["csv", "xlsx"],
+        help="CSV, TSV, Excel (xls/xlsx/xlsm), JSON, JSONL, XML, Parquet, or ODS. "
+             "Full preview, validation, and a Data Trust Score are shown before anything "
              "is imported — nothing changes until you confirm.",
         key="uploader_main",
     )
 
-    if uploaded is not None:
+    if uploaded is not None and not st.session_state.get("_pending_multisheet_data"):
         _sig = f"{uploaded.name}:{uploaded.size}"
         if st.session_state.get("_staged_upload_sig") != _sig:
-            try:
-                _raw = _read_uploaded_dataframe(uploaded)
-                _raw.columns = [str(c).strip() for c in _raw.columns]
-                if _raw.empty:
-                    st.error("❌ The uploaded file is empty.")
+            if not _UNIVERSAL_READER_AVAILABLE:
+                # Fallback to the original CSV/XLSX-only path if the new
+                # data_engine modules aren't present in the repo yet.
+                try:
+                    _raw = _read_uploaded_dataframe(uploaded)
+                    _raw.columns = [str(c).strip() for c in _raw.columns]
+                    if _raw.empty:
+                        st.error("❌ The uploaded file is empty.")
+                    else:
+                        st.session_state["_staged_raw_df"]     = _raw
+                        st.session_state["_staged_filename"]   = uploaded.name
+                        st.session_state["_staged_upload_sig"] = _sig
+                        st.session_state["_show_trust_center"] = True
+                        st.rerun()
+                except ValueError as e:
+                    st.error(f"❌ {e}")
+                except Exception:
+                    st.error("❌ This file does not contain readable data, or the format is not supported.")
+            else:
+                classification = classify_file(uploaded.name)
+                if not classification["supported_now"]:
+                    st.error(
+                        f"❌ '.{classification['extension']}' files ({classification['category'].replace('_',' ')} "
+                        f"format) can't be turned into a dataset yet. Supported now: "
+                        f"{', '.join(e.upper() for e in ALL_SUPPORTED_NOW)}. "
+                        f"PDF/Word/PowerPoint/image support is planned but not live yet."
+                    )
                 else:
-                    st.session_state["_staged_raw_df"]     = _raw
-                    st.session_state["_staged_filename"]   = uploaded.name
-                    st.session_state["_staged_upload_sig"] = _sig
-                    st.session_state["_show_trust_center"] = True
-                    st.rerun()
-            except ValueError as e:
-                st.error(f"❌ {e}")
-            except Exception:
-                st.error("❌ This file does not contain readable data, or the format is not supported.")
+                    result = UniversalReader().read(uploaded)
+                    if not result["ok"]:
+                        st.error(f"❌ {result['error']}")
+                    elif len(result["sheets"]) > 1:
+                        st.session_state["_pending_multisheet_data"]     = result
+                        st.session_state["_pending_multisheet_filename"] = uploaded.name
+                        st.session_state["_pending_multisheet_sig"]      = _sig
+                        st.rerun()
+                    else:
+                        _raw = next(iter(result["sheets"].values())).copy()
+                        _raw.columns = [str(c).strip() for c in _raw.columns]
+                        st.session_state["_staged_raw_df"]     = _raw
+                        st.session_state["_staged_filename"]   = uploaded.name
+                        st.session_state["_staged_upload_sig"] = _sig
+                        st.session_state["_show_trust_center"] = True
+                        st.rerun()
+
+    if st.session_state.get("_pending_multisheet_data"):
+        _pm = st.session_state["_pending_multisheet_data"]
+        st.markdown(
+            f"**{st.session_state['_pending_multisheet_filename']}** has {len(_pm['sheets'])} sheets — "
+            f"pick one to import (each sheet is treated as a separate table; NovaMS won't auto-join them):"
+        )
+        _sheet_names = list(_pm["sheets"].keys())
+        chosen_sheet = st.selectbox(
+            "Sheet", _sheet_names, index=_sheet_names.index(_pm["default_sheet"]), key="sheet_choice_box",
+        )
+        st.caption(f"{len(_pm['sheets'][chosen_sheet]):,} rows × {len(_pm['sheets'][chosen_sheet].columns)} columns in this sheet.")
+        sc1, sc2 = st.columns(2)
+        with sc1:
+            if st.button("Use This Sheet", type="primary", use_container_width=True, key="confirm_sheet_btn"):
+                _raw = _pm["sheets"][chosen_sheet].copy()
+                _raw.columns = [str(c).strip() for c in _raw.columns]
+                st.session_state["_staged_raw_df"]     = _raw
+                st.session_state["_staged_filename"]   = f"{st.session_state['_pending_multisheet_filename']} — {chosen_sheet}"
+                st.session_state["_staged_upload_sig"] = st.session_state["_pending_multisheet_sig"]
+                st.session_state["_show_trust_center"] = True
+                st.session_state["_pending_multisheet_data"]     = None
+                st.session_state["_pending_multisheet_filename"] = None
+                st.session_state["_pending_multisheet_sig"]      = None
+                st.rerun()
+        with sc2:
+            if st.button("Cancel", use_container_width=True, key="cancel_sheet_btn"):
+                st.session_state["_pending_multisheet_data"]     = None
+                st.session_state["_pending_multisheet_filename"] = None
+                st.session_state["_pending_multisheet_sig"]      = None
+                st.rerun()
 
     if st.session_state.get("_dataset_versions"):
         with st.expander(f"Dataset History ({len(st.session_state['_dataset_versions'])})"):
