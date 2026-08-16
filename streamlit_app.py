@@ -50,6 +50,16 @@ except ImportError:
     _UNIVERSAL_READER_AVAILABLE = False
 
 try:
+    from data_engine.chart_engine import (
+        default_config as chart_default_config, aggregate_chart_data,
+        compute_chart_insight, build_figure as chart_build_figure,
+    )
+    from data_engine.chart_commands import apply_command as chart_apply_command
+    _CHART_ENGINE_AVAILABLE = True
+except ImportError:
+    _CHART_ENGINE_AVAILABLE = False
+
+try:
     from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
     _SEMANTIC_INTERPRETER_AVAILABLE = True
 except ImportError as _e:
@@ -4820,6 +4830,79 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
                 height=280, yaxis=dict(autorange="reversed", **_AXIS_DEFAULTS), showlegend=False)
             with chart_cols[i % 2]:
                 st.plotly_chart(fig, use_container_width=True)
+
+        # ══════════════════════════════════════════════════════════════
+        # ── EXPLORE — two-way dynamic chart builder (additive, new).
+        # The manual dropdowns below and the natural-language command box
+        # both mutate the exact same ChartConfig dict via data_engine's
+        # chart_engine/chart_commands modules, so results are always
+        # identical no matter which control was used. Nothing above this
+        # point is touched — the static breakdown charts stay as they are.
+        # ══════════════════════════════════════════════════════════════
+        st.markdown('<div class="section-head">Explore — Build Your Own Chart</div>', unsafe_allow_html=True)
+        if not _CHART_ENGINE_AVAILABLE:
+            st.info("Chart engine module not found — add `data_engine/chart_engine.py` and "
+                     "`data_engine/chart_commands.py` to enable this section.")
+        else:
+            st.caption("Change any control below, or type a command — both drive the same chart.")
+
+            # Apply a pending AI-command update BEFORE the widgets below are
+            # instantiated this run — Streamlit won't allow changing a
+            # widget's session_state value after it's already been created
+            # in the same script pass, so this defers to the top of the
+            # NEXT run via the same flag+rerun pattern used for filters.
+            _pending = st.session_state.pop("_pending_chart_update", None)
+            if _pending:
+                st.session_state["explore_dim"] = _pending.get("dimension") or "None"
+                st.session_state["explore_metric"] = _pending.get("metric")
+                st.session_state["explore_agg"] = _pending.get("aggregation")
+                st.session_state["explore_type"] = _pending.get("chart_type")
+                st.session_state["explore_topn"] = _pending.get("top_n") or 10
+
+            _dim_options = ["None"] + dimensions
+            ec1, ec2, ec3, ec4, ec5 = st.columns([1.3, 1.3, 1, 1.2, 0.8])
+            with ec1:
+                sel_dim = st.selectbox("Dimension", _dim_options, key="explore_dim")
+            with ec2:
+                sel_metric = st.selectbox("Metric", measures, key="explore_metric")
+            with ec3:
+                sel_agg = st.selectbox("Aggregation", ["sum", "average", "count", "median", "min", "max"], key="explore_agg")
+            with ec4:
+                sel_type = st.selectbox(
+                    "Chart type", ["bar", "horizontal_bar", "line", "pie", "donut", "scatter", "table"],
+                    key="explore_type",
+                )
+            with ec5:
+                sel_topn = st.number_input("Top N", min_value=2, max_value=30, value=10, key="explore_topn")
+
+            explore_config = dict(
+                chart_type=sel_type, dimension=None if sel_dim == "None" else sel_dim,
+                metric=sel_metric, metric2=None, aggregation=sel_agg, top_n=int(sel_topn), sort="desc",
+            )
+            series = aggregate_chart_data(raw_df, explore_config)
+            fig = chart_build_figure(series, explore_config, PAL)
+            st.plotly_chart(fig, use_container_width=True)
+            st.markdown(
+                f'<div class="narrative-box">✨ {compute_chart_insight(series, explore_config)}</div>',
+                unsafe_allow_html=True,
+            )
+
+            cmd_col1, cmd_col2 = st.columns([4, 1])
+            with cmd_col1:
+                nl_command = st.text_input(
+                    "Ask Nova to change this chart",
+                    placeholder="e.g. switch to a donut chart, show top 5, use average instead of sum",
+                    key="explore_nl_command", label_visibility="collapsed",
+                )
+            with cmd_col2:
+                apply_clicked = st.button("Apply", use_container_width=True, key="explore_apply_btn")
+            if apply_clicked and nl_command.strip():
+                new_cfg, msg = chart_apply_command(explore_config, raw_df.columns.tolist(), roles, nl_command.strip())
+                st.session_state["_pending_chart_update"] = new_cfg
+                st.session_state["_explore_last_msg"] = msg
+                st.rerun()
+            if st.session_state.get("_explore_last_msg"):
+                st.caption(st.session_state["_explore_last_msg"])
 
     # Gated by the Capability Engine, not just "does a date column exist" —
     # a date column with low mapping confidence won't unlock this section.
