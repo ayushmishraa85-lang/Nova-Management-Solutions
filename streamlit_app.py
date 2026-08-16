@@ -46,6 +46,22 @@ except ImportError as _e:
     build_llm_context = None
     interpret_with_claude = None
     _SEMANTIC_INTERPRETER_AVAILABLE = False
+
+try:
+    from i18n import t, get_language, set_language, available_languages, language_selector_sidebar
+    from ai.multilingual_analyst import (
+        build_multilingual_system_prompt, get_suggested_questions,
+        data_trust_explanation, cached_llm_answer,
+    )
+    from ai.model_adapter import ModelAdapter
+    _I18N_AVAILABLE = True
+except ImportError as _e:
+    _I18N_AVAILABLE = False
+    _I18N_IMPORT_ERROR = str(_e)
+    def t(key: str, **kwargs) -> str:  # no-op fallback so every t(...) call below stays safe
+        return key
+    def get_language() -> str:
+        return "en"
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -2271,9 +2287,12 @@ def _bb_trust(q, ctx, df, mem, detailed=False):
     if findings["negative_or_zero"]:
         issues.append("zero/negative values in " + ", ".join(findings["negative_or_zero"].keys()))
 
+    _trust_answer = f"**{trust['score']}/100 — {trust['status']}**\n\n{trust['main_issue']}"
+    if _I18N_AVAILABLE and get_language() != "en":
+        _trust_answer += "\n\n" + data_trust_explanation(trust["score"], trust["status"], trust["main_issue"])
     rb = (
         ResponseBuilder("🛡️", "Data Trust Score")
-        .answer(f"**{trust['score']}/100 — {trust['status']}**\n\n{trust['main_issue']}")
+        .answer(_trust_answer)
         .metric("Completeness", f"{max(0,trust['sub_scores']['completeness'])*100:.0f}%", "📋")
         .metric("Validity",     f"{max(0,trust['sub_scores']['validity'])*100:.0f}%", "✅")
         .metric("Consistency",  f"{max(0,trust['sub_scores']['consistency'])*100:.0f}%", "🔗")
@@ -4242,6 +4261,10 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
+    if _I18N_AVAILABLE:
+        language_selector_sidebar()
+        st.markdown("---")
+
     if st.session_state.get("_is_universal_dataset"):
         st.markdown("""
         <div style="background:rgba(29,77,255,.1);border:1px solid rgba(29,77,255,.3);
@@ -5835,6 +5858,11 @@ def render_ai_analyst():
         ("📍 City Analysis", "Which city is performing worst?"),
         ("⚡ Influencers",   "How is influencer marketing performing?"),
     ]
+    if _I18N_AVAILABLE and get_language() != "en":
+        # Swap in the localized trio (Why revenue dropped / Top cities / Forecast)
+        # from the language spec, keeping QUICK_BASE's 4th English item as a filler
+        # so the row still has 4 buttons.
+        QUICK_BASE = get_suggested_questions() + QUICK_BASE[3:]
     QUICK_FOLLOWUP: list[tuple[str, str]] = []
     if _ui_mem.last_intent == "city" and _ui_mem.last_city:
         QUICK_FOLLOWUP.append(("⚖️ Compare Cities",   "Compare best vs worst city"))
@@ -5880,6 +5908,8 @@ def render_ai_analyst():
 
         if use_ai_mode and api_key:
             system_prompt = _build_llm_system_prompt(df, kpis)
+            if _I18N_AVAILABLE:
+                system_prompt = build_multilingual_system_prompt(system_prompt)
             clean_messages = _sanitise_messages(st.session_state.bb_messages_llm)
 
             st.markdown(f'<div class="chat-message-user">💬 {question_to_answer}</div>', unsafe_allow_html=True)
