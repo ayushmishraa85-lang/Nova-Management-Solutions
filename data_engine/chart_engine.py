@@ -122,9 +122,10 @@ def build_figure(series: pd.Series, config: dict, palette: list):
 
     title_verb = {"sum": "Total", "mean": "Average", "count": "Count of", "median": "Median",
                   "min": "Minimum", "max": "Maximum", "count_distinct": "Distinct count of"}
+    verb = title_verb.get(config.get('aggregation', 'sum'), '')
+    metric_title = metric if metric.lower().startswith(verb.lower()) else f"{verb} {metric}".strip()
     fig.update_layout(
-        title=f"{title_verb.get(config.get('aggregation','sum'), '')} {metric}"
-              + (f" by {dim}" if config.get("dimension") else ""),
+        title=metric_title + (f" by {dim}" if config.get("dimension") else ""),
         margin=dict(l=10, r=10, t=40, b=10), height=340,
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
     )
