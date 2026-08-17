@@ -32,7 +32,7 @@ def apply_command(config: dict, df_columns: list, roles: dict, command: str) -> 
     changes = []
 
     for phrase, chart_type in sorted(_CHART_TYPE_WORDS.items(), key=lambda x: -len(x[0])):
-        if phrase in q and ("chart" in q or "graph" in q or phrase in ("scatter", "table")):
+        if phrase in q:
             new_config["chart_type"] = chart_type
             changes.append(f"chart type → {chart_type.replace('_', ' ')}")
             break
@@ -60,13 +60,13 @@ def apply_command(config: dict, df_columns: list, roles: dict, command: str) -> 
     measure_cols = [c for c, r in roles.items() if r == "Measure"]
 
     for col in dimension_cols:
-        if re.search(rf"\b(show|by|change to|switch to)\s+{re.escape(col.lower())}\b", q):
+        if re.search(rf"\b(show|by|use|change to|switch to)\s+{re.escape(col.lower())}\b", q):
             new_config["dimension"] = col
             changes.append(f"dimension → {col}")
             break
 
     for col in measure_cols:
-        if re.search(rf"\b(show|change to|switch to)\s+{re.escape(col.lower())}\b", q):
+        if re.search(rf"\b(show|use|change to|switch to)\s+{re.escape(col.lower())}\b", q):
             new_config["metric"] = col
             changes.append(f"metric → {col}")
             break
