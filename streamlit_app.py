@@ -3541,6 +3541,35 @@ _QUADRANT_COLORS = {
     "Growth Opportunity": "#D97706", "Review": "#EF4444",
 }
 
+# Every dimension/measure the classic Zepto-schema flow can possibly have —
+# whichever of these actually exist in the current file's columns (some are
+# optional, like Influencer Active) are offered in the Explore page below.
+_ZEPTO_DIMENSION_COLS = ["Product Name", "Category", "City", "Influencer Active", "Price Tier"]
+_ZEPTO_MEASURE_COLS = ["Original Price", "Current Price", "Discount", "Orders", "Total Revenue", "Profit", "Profit Margin"]
+
+
+def render_explore_studio():
+    """
+    Dedicated 'Explore' page for the classic Zepto-schema flow — the same
+    two-way (manual + AI command) dynamic chart builder used on the
+    Universal Dashboard, reused as-is via render_dynamic_chart_explorer(),
+    just pointed at Zepto's known columns instead of Data-Engine-detected
+    ones. Covers every dimension × measure × aggregation × chart-type
+    combination across the whole dataset from one place, rather than
+    retrofitting each of the existing fixed charts individually.
+    """
+    page_header("Explore", "Build any chart from your data — pick the fields, or tell Nova what you want")
+    narrative(
+        "<b>What this is:</b> a fully dynamic chart builder covering every dimension and measure in "
+        "your dataset — City, Category, Product, Influencer status, Revenue, Profit, Orders, Discount, "
+        "Margin, and more. Instead of scrolling through fixed charts, build exactly the view you need."
+    )
+    dims = [c for c in _ZEPTO_DIMENSION_COLS if c in df.columns]
+    measures_local = [c for c in _ZEPTO_MEASURE_COLS if c in df.columns]
+    roles = {c: "Dimension" for c in dims}
+    roles.update({c: "Measure" for c in measures_local})
+    render_dynamic_chart_explorer(df, roles, dims, measures_local, key_prefix="zexplore")
+
 
 def render_product_analytics():
     """
@@ -4264,6 +4293,7 @@ NAV_PAGES = [
     "Sales by Location",
     "Product Analytics",
     "Data Engine",
+    "Explore",
 ]
 
 
@@ -4747,6 +4777,82 @@ def _fmt_generic(n, col_name: str = "") -> str:
     return f"{n:,.2f}" if isinstance(n, float) and not float(n).is_integer() else f"{int(n):,}"
 
 
+def render_dynamic_chart_explorer(df_in: pd.DataFrame, roles: dict, dimensions: list, measures: list, key_prefix: str = "explore"):
+    """Two-way (manual + AI command) dynamic chart builder. Shared by the
+    Universal Dashboard and the classic Zepto-schema 'Explore' page — same
+    engine, same tested behavior, just different columns/roles passed in.
+    The dropdowns and the natural-language command box both mutate the
+    exact same ChartConfig dict via data_engine's chart_engine/chart_commands
+    modules, so results are always identical no matter which control was used."""
+    if not _CHART_ENGINE_AVAILABLE:
+        st.info("Chart engine module not found — add `data_engine/chart_engine.py` and "
+                 "`data_engine/chart_commands.py` to enable this section.")
+        return
+    if not measures:
+        st.info("No numeric measures available to build a chart from.")
+        return
+
+    st.caption("Change any control below, or type a command — both drive the same chart.")
+
+    # Apply a pending AI-command update BEFORE the widgets below are
+    # instantiated this run — Streamlit won't allow changing a widget's
+    # session_state value after it's already been created in the same
+    # script pass, so this defers to the top of the NEXT run via the same
+    # flag+rerun pattern used for filters elsewhere in NovaMS.
+    _pending = st.session_state.pop(f"_pending_chart_update_{key_prefix}", None)
+    if _pending:
+        st.session_state[f"{key_prefix}_dim"] = _pending.get("dimension") or "None"
+        st.session_state[f"{key_prefix}_metric"] = _pending.get("metric")
+        st.session_state[f"{key_prefix}_agg"] = _pending.get("aggregation")
+        st.session_state[f"{key_prefix}_type"] = _pending.get("chart_type")
+        st.session_state[f"{key_prefix}_topn"] = _pending.get("top_n") or 10
+
+    _dim_options = ["None"] + dimensions
+    ec1, ec2, ec3, ec4, ec5 = st.columns([1.3, 1.3, 1, 1.2, 0.8])
+    with ec1:
+        sel_dim = st.selectbox("Dimension", _dim_options, key=f"{key_prefix}_dim")
+    with ec2:
+        sel_metric = st.selectbox("Metric", measures, key=f"{key_prefix}_metric")
+    with ec3:
+        sel_agg = st.selectbox("Aggregation", ["sum", "average", "count", "median", "min", "max"], key=f"{key_prefix}_agg")
+    with ec4:
+        sel_type = st.selectbox(
+            "Chart type", ["bar", "horizontal_bar", "line", "pie", "donut", "scatter", "table"],
+            key=f"{key_prefix}_type",
+        )
+    with ec5:
+        sel_topn = st.number_input("Top N", min_value=2, max_value=30, value=10, key=f"{key_prefix}_topn")
+
+    config = dict(
+        chart_type=sel_type, dimension=None if sel_dim == "None" else sel_dim,
+        metric=sel_metric, metric2=None, aggregation=sel_agg, top_n=int(sel_topn), sort="desc",
+    )
+    series = aggregate_chart_data(df_in, config)
+    fig = chart_build_figure(series, config, PAL)
+    st.plotly_chart(fig, use_container_width=True, key=f"{key_prefix}_fig")
+    st.markdown(
+        f'<div class="narrative-box">✨ {compute_chart_insight(series, config)}</div>',
+        unsafe_allow_html=True,
+    )
+
+    cmd_col1, cmd_col2 = st.columns([4, 1])
+    with cmd_col1:
+        nl_command = st.text_input(
+            "Ask Nova to change this chart",
+            placeholder="e.g. switch to a donut chart, show top 5, use average instead of sum",
+            key=f"{key_prefix}_nl_command", label_visibility="collapsed",
+        )
+    with cmd_col2:
+        apply_clicked = st.button("Apply", use_container_width=True, key=f"{key_prefix}_apply_btn")
+    if apply_clicked and nl_command.strip():
+        new_cfg, msg = chart_apply_command(config, df_in.columns.tolist(), roles, nl_command.strip())
+        st.session_state[f"_pending_chart_update_{key_prefix}"] = new_cfg
+        st.session_state[f"_explore_last_msg_{key_prefix}"] = msg
+        st.rerun()
+    if st.session_state.get(f"_explore_last_msg_{key_prefix}"):
+        st.caption(st.session_state[f"_explore_last_msg_{key_prefix}"])
+
+
 def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict, persona: str):
     """Renders a fully dynamic dashboard for any dataset that doesn't match
     NovaMS's built-in quick-commerce schema — built from whatever roles the
@@ -4840,69 +4946,7 @@ def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict,
         # point is touched — the static breakdown charts stay as they are.
         # ══════════════════════════════════════════════════════════════
         st.markdown('<div class="section-head">Explore — Build Your Own Chart</div>', unsafe_allow_html=True)
-        if not _CHART_ENGINE_AVAILABLE:
-            st.info("Chart engine module not found — add `data_engine/chart_engine.py` and "
-                     "`data_engine/chart_commands.py` to enable this section.")
-        else:
-            st.caption("Change any control below, or type a command — both drive the same chart.")
-
-            # Apply a pending AI-command update BEFORE the widgets below are
-            # instantiated this run — Streamlit won't allow changing a
-            # widget's session_state value after it's already been created
-            # in the same script pass, so this defers to the top of the
-            # NEXT run via the same flag+rerun pattern used for filters.
-            _pending = st.session_state.pop("_pending_chart_update", None)
-            if _pending:
-                st.session_state["explore_dim"] = _pending.get("dimension") or "None"
-                st.session_state["explore_metric"] = _pending.get("metric")
-                st.session_state["explore_agg"] = _pending.get("aggregation")
-                st.session_state["explore_type"] = _pending.get("chart_type")
-                st.session_state["explore_topn"] = _pending.get("top_n") or 10
-
-            _dim_options = ["None"] + dimensions
-            ec1, ec2, ec3, ec4, ec5 = st.columns([1.3, 1.3, 1, 1.2, 0.8])
-            with ec1:
-                sel_dim = st.selectbox("Dimension", _dim_options, key="explore_dim")
-            with ec2:
-                sel_metric = st.selectbox("Metric", measures, key="explore_metric")
-            with ec3:
-                sel_agg = st.selectbox("Aggregation", ["sum", "average", "count", "median", "min", "max"], key="explore_agg")
-            with ec4:
-                sel_type = st.selectbox(
-                    "Chart type", ["bar", "horizontal_bar", "line", "pie", "donut", "scatter", "table"],
-                    key="explore_type",
-                )
-            with ec5:
-                sel_topn = st.number_input("Top N", min_value=2, max_value=30, value=10, key="explore_topn")
-
-            explore_config = dict(
-                chart_type=sel_type, dimension=None if sel_dim == "None" else sel_dim,
-                metric=sel_metric, metric2=None, aggregation=sel_agg, top_n=int(sel_topn), sort="desc",
-            )
-            series = aggregate_chart_data(raw_df, explore_config)
-            fig = chart_build_figure(series, explore_config, PAL)
-            st.plotly_chart(fig, use_container_width=True)
-            st.markdown(
-                f'<div class="narrative-box">✨ {compute_chart_insight(series, explore_config)}</div>',
-                unsafe_allow_html=True,
-            )
-
-            cmd_col1, cmd_col2 = st.columns([4, 1])
-            with cmd_col1:
-                nl_command = st.text_input(
-                    "Ask Nova to change this chart",
-                    placeholder="e.g. switch to a donut chart, show top 5, use average instead of sum",
-                    key="explore_nl_command", label_visibility="collapsed",
-                )
-            with cmd_col2:
-                apply_clicked = st.button("Apply", use_container_width=True, key="explore_apply_btn")
-            if apply_clicked and nl_command.strip():
-                new_cfg, msg = chart_apply_command(explore_config, raw_df.columns.tolist(), roles, nl_command.strip())
-                st.session_state["_pending_chart_update"] = new_cfg
-                st.session_state["_explore_last_msg"] = msg
-                st.rerun()
-            if st.session_state.get("_explore_last_msg"):
-                st.caption(st.session_state["_explore_last_msg"])
+        render_dynamic_chart_explorer(raw_df, roles, dimensions, measures, key_prefix="uexplore")
 
     # Gated by the Capability Engine, not just "does a date column exist" —
     # a date column with low mapping confidence won't unlock this section.
@@ -6260,6 +6304,7 @@ _PAGE_RENDERERS = {
     "Sales by Location":       render_sales_by_location,
     "Product Analytics":       render_product_analytics,
     "Data Engine":             render_data_engine,
+    "Explore":                 render_explore_studio,
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
