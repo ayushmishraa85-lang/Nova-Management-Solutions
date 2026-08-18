@@ -60,6 +60,12 @@ except ImportError:
     _CHART_ENGINE_AVAILABLE = False
 
 try:
+    from data_engine.root_cause import drill_down_weakest, contributors_to_change
+    _ROOT_CAUSE_AVAILABLE = True
+except ImportError:
+    _ROOT_CAUSE_AVAILABLE = False
+
+try:
     from ai.semantic_interpreter import build_llm_context, interpret as interpret_with_claude
     _SEMANTIC_INTERPRETER_AVAILABLE = True
 except ImportError as _e:
@@ -4851,6 +4857,30 @@ def render_dynamic_chart_explorer(df_in: pd.DataFrame, roles: dict, dimensions: 
         st.rerun()
     if st.session_state.get(f"_explore_last_msg_{key_prefix}"):
         st.caption(st.session_state[f"_explore_last_msg_{key_prefix}"])
+
+    # ── Investigate — root-cause drill-down (additive). Walks broad-to-narrow
+    # through whichever dimensions actually exist (City→Area→Store→Category→
+    # Product→SKU, whenever present) to find the weakest specific segment for
+    # the currently selected metric, with the real number at every step.
+    with st.expander(f"🔍 Investigate — what's dragging down {sel_metric}?"):
+        if not _ROOT_CAUSE_AVAILABLE:
+            st.info("Root-cause module not found — add `data_engine/root_cause.py` to enable this.")
+        elif len(dimensions) == 0:
+            st.caption("No dimension columns available to drill into.")
+        else:
+            chain = drill_down_weakest(df_in, dimensions, sel_metric, sel_agg if sel_agg != "average" else "mean")
+            if not chain:
+                st.caption("Not enough distinct values in the available dimensions to drill down.")
+            else:
+                path = " → ".join(f"**{step['value']}**" for step in chain)
+                st.markdown(f"Weakest path: {path}")
+                for step in chain:
+                    st.markdown(
+                        f"- **{step['dimension']}**: `{step['value']}` — {step['metric_value']:,.2f} "
+                        f"({step['share_of_total']:.1f}% of that level's total, out of {step['n_segments']} value(s))"
+                    )
+                st.caption("Every number above is a real aggregate from the current data — nothing here is estimated.")
+
 
 
 def render_universal_dashboard(raw_df: pd.DataFrame, cached_engine_output: dict, persona: str):
