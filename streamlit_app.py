@@ -806,31 +806,109 @@ THEME_PRESETS = {
         primary="#1D4DFF", bg="#0A0C0F", card="#14171C", sidebar="#07090B",
         sidebar2="#14181D", text="#F1F5F9", muted="#9AA4B2",
         success="#22C55E", warning="#D97706", danger="#EF4444", border="#262B33",
+        chart_palette=["#6366f1", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#3b82f6"],
     ),
     "Executive Dark": dict(
         primary="#4F6BFF", bg="#0B0D12", card="#171A22", sidebar="#0A0C11",
         sidebar2="#171B24", text="#F5F7FA", muted="#98A2B3",
         success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#262B33",
+        chart_palette=["#4F6BFF", "#818CF8", "#38BDF8", "#22C55E", "#F59E0B", "#A78BFA"],
     ),
     "Growth Green": dict(
         primary="#16A34A", bg="#0A0F0C", card="#131C16", sidebar="#070B08",
         sidebar2="#101A14", text="#F1F5F9", muted="#9CA8A1",
         success="#22C55E", warning="#D97706", danger="#EF4444", border="#223028",
+        chart_palette=["#16A34A", "#22C55E", "#4ADE80", "#0EA5E9", "#F59E0B", "#84CC16"],
     ),
     "Premium Purple": dict(
         primary="#7C3AED", bg="#0C0A0F", card="#17141C", sidebar="#0A080D",
         sidebar2="#1C1826", text="#F5F3F7", muted="#A79FB0",
         success="#22C55E", warning="#D97706", danger="#EF4444", border="#2A2433",
+        chart_palette=["#7C3AED", "#A855F7", "#C084FC", "#22D3EE", "#F59E0B", "#EC4899"],
     ),
     "Minimal Light": dict(
         primary="#2563EB", bg="#F8FAFC", card="#FFFFFF", sidebar="#F1F5F9",
         sidebar2="#E9EEF5", text="#0F172A", muted="#64748B",
         success="#16A34A", warning="#D97706", danger="#DC2626", border="#E2E8F0",
+        chart_palette=["#2563EB", "#0EA5E9", "#22C55E", "#F59E0B", "#DC2626", "#7C3AED"],
     ),
     "Commerce": dict(
         primary="#EA580C", bg="#0B0D12", card="#151A22", sidebar="#0A0C11",
         sidebar2="#171B24", text="#F5F1EA", muted="#A6A196",
         success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#262B33",
+        chart_palette=["#EA580C", "#F97316", "#FB923C", "#0EA5E9", "#22C55E", "#EC4899"],
+    ),
+    "Ocean Blue": dict(
+        primary="#0EA5E9", bg="#071019", card="#0F1B29", sidebar="#050B12",
+        sidebar2="#0F1B29", text="#F0F9FF", muted="#7DA9C4",
+        success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#16324A",
+        chart_palette=["#0EA5E9", "#06B6D4", "#38BDF8", "#0891B2", "#22D3EE", "#0284C7"],
+    ),
+    "Midnight": dict(
+        primary="#7C7CFF", bg="#050608", card="#101216", sidebar="#030405",
+        sidebar2="#15181D", text="#F5F5F7", muted="#8B8D98",
+        success="#22C55E", warning="#F59E0B", danger="#EF4444", border="#212330",
+        chart_palette=["#7C7CFF", "#9D7CFF", "#5B8DEF", "#6366F1", "#818CF8", "#A78BFA"],
+    ),
+    "Emerald": dict(
+        primary="#10B981", bg="#0A0F0D", card="#121C17", sidebar="#070B09",
+        sidebar2="#182821", text="#F0FDF4", muted="#8FA99A",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#1F332A",
+        chart_palette=["#10B981", "#34D399", "#6EE7B7", "#059669", "#A7F3D0", "#047857"],
+    ),
+    "Royal Purple": dict(
+        primary="#9333EA", bg="#0C0A11", card="#17131F", sidebar="#09070C",
+        sidebar2="#1D1829", text="#F5F3FF", muted="#A79BC0",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#2A2338",
+        chart_palette=["#9333EA", "#A855F7", "#C084FC", "#7E22CE", "#D8B4FE", "#6B21A8"],
+    ),
+    "Sunset Orange": dict(
+        primary="#F97316", bg="#0F0B08", card="#1C130C", sidebar="#0B0806",
+        sidebar2="#221A11", text="#FFF7ED", muted="#C4A48A",
+        success="#22C55E", warning="#FBBF24", danger="#EF4444", border="#332419",
+        chart_palette=["#F97316", "#FB923C", "#FDBA74", "#EA580C", "#FED7AA", "#C2410C"],
+    ),
+    "Crimson": dict(
+        primary="#DC2626", bg="#0F0808", card="#1C0F0F", sidebar="#0B0505",
+        sidebar2="#221414", text="#FEF2F2", muted="#C4938E",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#331A19",
+        chart_palette=["#DC2626", "#EF4444", "#F87171", "#B91C1C", "#FCA5A5", "#991B1B"],
+    ),
+    "Arctic": dict(
+        primary="#0284C7", bg="#F7FAFC", card="#FFFFFF", sidebar="#EFF4F8",
+        sidebar2="#E4ECF3", text="#0F172A", muted="#64748B",
+        success="#16A34A", warning="#D97706", danger="#DC2626", border="#DCE6EE",
+        chart_palette=["#0284C7", "#0EA5E9", "#38BDF8", "#0891B2", "#0369A1", "#075985"],
+    ),
+    "Slate": dict(
+        primary="#64748B", bg="#0B0D10", card="#141719", sidebar="#08090B",
+        sidebar2="#1A1E22", text="#F1F5F9", muted="#94A3B8",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#262B30",
+        chart_palette=["#64748B", "#94A3B8", "#475569", "#7C93AC", "#334155", "#5B7391"],
+    ),
+    "Teal": dict(
+        primary="#14B8A6", bg="#080F0F", card="#101B1B", sidebar="#050B0B",
+        sidebar2="#152323", text="#F0FDFA", muted="#8FB5AE",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#1C2E2C",
+        chart_palette=["#14B8A6", "#2DD4BF", "#5EEAD4", "#0D9488", "#99F6E4", "#0F766E"],
+    ),
+    "Indigo": dict(
+        primary="#6366F1", bg="#0A0B14", card="#141625", sidebar="#07080F",
+        sidebar2="#1A1D2E", text="#F1F1FE", muted="#9498C0",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#242840",
+        chart_palette=["#6366F1", "#818CF8", "#A5B4FC", "#4F46E5", "#C7D2FE", "#4338CA"],
+    ),
+    "Rose": dict(
+        primary="#EC4899", bg="#100810", card="#1D0F1B", sidebar="#0C050C",
+        sidebar2="#241522", text="#FDF2F8", muted="#C293B3",
+        success="#22C55E", warning="#D97706", danger="#EF4444", border="#33192E",
+        chart_palette=["#EC4899", "#F472B6", "#F9A8D4", "#DB2777", "#FBCFE8", "#BE185D"],
+    ),
+    "Monochrome": dict(
+        primary="#E5E5E5", bg="#0A0A0A", card="#161616", sidebar="#050505",
+        sidebar2="#1E1E1E", text="#FAFAFA", muted="#8A8A8A",
+        success="#A3A3A3", warning="#D4D4D4", danger="#F5F5F5", border="#2A2A2A",
+        chart_palette=["#E5E5E5", "#B5B5B5", "#8A8A8A", "#D4D4D4", "#6E6E6E", "#F5F5F5"],
     ),
 }
 
@@ -851,10 +929,12 @@ if _theme_name == "Custom":
     _c_success = st.session_state.get("_tc_success", _cd["success"])
     _c_warning = st.session_state.get("_tc_warning", _cd["warning"])
     _c_danger  = st.session_state.get("_tc_danger", _cd["danger"])
+    _c_palette_name = st.session_state.get("_tc_chart_palette_name", "Nova Blue")
     _theme_vars.update(dict(
         primary=_c_primary, bg=_c_bg, card=_c_card, sidebar=_c_sidebar,
         text=_c_text, muted=_c_muted, success=_c_success, warning=_c_warning, danger=_c_danger,
         border=_hex_to_rgba(_c_muted, .3), sidebar2=_lighten_hex(_c_sidebar, 12),
+        chart_palette=THEME_PRESETS.get(_c_palette_name, THEME_PRESETS["Nova Blue"])["chart_palette"],
     ))
 
 st.markdown(f"""
@@ -883,6 +963,16 @@ st.markdown(f"""
 }}
 </style>
 """, unsafe_allow_html=True)
+
+# Swaps the generic chart color list to the active theme's coordinated
+# palette. Every existing chart function references the global PAL by name
+# and looks it up at call time (not at definition time), so this single
+# reassignment — made before any page is rendered — flows through to every
+# chart automatically. Nothing about how any chart is built is touched.
+# CAT_CLR/CITY_CLR (fixed semantic colors like "Snacks"→indigo) are left
+# alone on purpose, so a given category/city keeps the same identifying
+# color across every theme rather than shifting with it.
+PAL = _theme_vars.get("chart_palette", PAL)
 
 
 _LEGEND_DEFAULT = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10))
@@ -4600,15 +4690,27 @@ with st.sidebar:
         if st.session_state.pop("_reset_theme_trigger", False):
             st.session_state["_theme_name"] = "Nova Blue"
             for _tk in ["_tc_primary", "_tc_bg", "_tc_card", "_tc_sidebar", "_tc_text",
-                        "_tc_muted", "_tc_success", "_tc_warning", "_tc_danger"]:
+                        "_tc_muted", "_tc_success", "_tc_warning", "_tc_danger", "_tc_chart_palette_name"]:
                 st.session_state.pop(_tk, None)
             st.session_state.pop("_theme_custom_colors", None)
 
         _theme_choice = st.selectbox(
             "Theme", list(THEME_PRESETS.keys()) + ["Custom"], key="_theme_name",
-            help="Presets recolor cards, buttons, badges, and the sidebar. "
+            help="Presets recolor cards, buttons, badges, the sidebar, and chart colors. "
                  "A few page-specific summary cards keep their original colors for now.",
         )
+
+        # Small, layout-safe preview: a row of dots for the selected theme's
+        # key colors, shown right under the dropdown — not inside it (plain
+        # st.selectbox can't render swatches per-option).
+        _preview_src = THEME_PRESETS.get(_theme_choice)
+        if _preview_src:
+            _dots = "".join(
+                f'<span style="display:inline-block;width:14px;height:14px;border-radius:50%;'
+                f'background:{_preview_src[k]};margin-right:5px;border:1px solid rgba(255,255,255,.15)"></span>'
+                for k in ["bg", "card", "primary", "success", "warning", "danger"]
+            )
+            st.markdown(f'<div style="margin:2px 0 10px">{_dots}</div>', unsafe_allow_html=True)
 
         if _theme_choice == "Custom":
             st.caption("Pick any color below — the whole dashboard updates immediately.")
@@ -4625,6 +4727,16 @@ with st.sidebar:
                 _c_success = st.color_picker("Success",          _base["success"], key="_tc_success")
                 _c_warning = st.color_picker("Warning",          _base["warning"], key="_tc_warning")
             _c_danger = st.color_picker("Danger", _base["danger"], key="_tc_danger")
+            _c_palette_name = st.selectbox(
+                "Chart palette", list(THEME_PRESETS.keys()), key="_tc_chart_palette_name",
+                help="Which theme's coordinated chart colors to pair with your custom colors above.",
+            )
+            _pal_dots = "".join(
+                f'<span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
+                f'background:{c};margin-right:4px"></span>'
+                for c in THEME_PRESETS[_c_palette_name]["chart_palette"]
+            )
+            st.markdown(f'<div style="margin:2px 0 8px">{_pal_dots}</div>', unsafe_allow_html=True)
 
             _ratio = _contrast_ratio(_c_text, _c_bg)
             if _ratio < 4.5:
@@ -4635,6 +4747,7 @@ with st.sidebar:
                     primary=_c_primary, bg=_c_bg, card=_c_card, sidebar=_c_sidebar,
                     text=_c_text, muted=_c_muted, success=_c_success, warning=_c_warning, danger=_c_danger,
                     border=_hex_to_rgba(_c_muted, .3), sidebar2=_lighten_hex(_c_sidebar, 12),
+                    chart_palette=THEME_PRESETS[_c_palette_name]["chart_palette"],
                 )
                 st.success("Saved for this session.")
         else:
