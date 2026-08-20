@@ -6439,6 +6439,14 @@ _PAGE_RENDERERS = {
     "Product Analytics":       render_product_analytics,
     "Data Engine":             render_data_engine,
     "Explore":                 render_explore_studio,
+    "Reports": (lambda: render_reports_page(
+        df,
+        st.session_state.get("_active_dataset_meta", {}).get("name", "Demo Dataset"),
+        use_ai_mode, api_key,
+        theme_primary=_theme_vars.get("primary"),
+        theme_chart_palette=_theme_vars.get("chart_palette"),
+    )) if _REPORTS_UI_AVAILABLE else (lambda: st.error(
+        "Report Engine module not found — add reports_ui.py and the reports/ package.")),
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
