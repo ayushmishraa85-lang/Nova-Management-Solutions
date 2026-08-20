@@ -74,20 +74,10 @@ except ImportError as _e:
     _SEMANTIC_INTERPRETER_AVAILABLE = False
 
 try:
-    from i18n import t, get_language, set_language, available_languages, language_selector_sidebar
-    from ai.multilingual_analyst import (
-        build_multilingual_system_prompt, get_suggested_questions,
-        data_trust_explanation, cached_llm_answer,
-    )
-    from ai.model_adapter import ModelAdapter
-    _I18N_AVAILABLE = True
-except ImportError as _e:
-    _I18N_AVAILABLE = False
-    _I18N_IMPORT_ERROR = str(_e)
-    def t(key: str, **kwargs) -> str:  # no-op fallback so every t(...) call below stays safe
-        return key
-    def get_language() -> str:
-        return "en"
+    from reports_ui import render_reports_page
+    _REPORTS_UI_AVAILABLE = True
+except ImportError:
+    _REPORTS_UI_AVAILABLE = False
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
