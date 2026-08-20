@@ -87,7 +87,7 @@ except ImportError:
     build_multilingual_system_prompt = None
     get_suggested_questions = None
 try:
-    from report.reports_ui import render_reports_page
+    from report.render_reports_page import render_reports_page
     _REPORTS_UI_AVAILABLE = True
 except ImportError:
     render_reports_page = None
