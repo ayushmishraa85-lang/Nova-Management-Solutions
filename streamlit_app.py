@@ -4380,6 +4380,7 @@ NAV_PAGES = [
     "Product Analytics",
     "Data Engine",
     "Explore",
+    "Reports",
 ]
 
 
