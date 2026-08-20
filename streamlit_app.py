@@ -74,10 +74,18 @@ except ImportError as _e:
     _SEMANTIC_INTERPRETER_AVAILABLE = False
 
 try:
-    from reports_ui import render_reports_page
-    _REPORTS_UI_AVAILABLE = True
+    from i18n import (
+        language_selector_sidebar, get_language, data_trust_explanation,
+        build_multilingual_system_prompt, get_suggested_questions,
+    )
+    _I18N_AVAILABLE = True
 except ImportError:
-    _REPORTS_UI_AVAILABLE = False
+    _I18N_AVAILABLE = False
+    language_selector_sidebar = None
+    get_language = None
+    data_trust_explanation = None
+    build_multilingual_system_prompt = None
+    get_suggested_questions = None
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
