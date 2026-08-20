@@ -92,7 +92,6 @@ try:
 except ImportError as e:
     render_reports_page = None
     _REPORTS_UI_AVAILABLE = False
-    st.exception(e)   # TEMP: shows the real cause
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
