@@ -7,3 +7,6 @@ scikit-learn
 requests
 openpyxl
 pydantic
+reportlab>=4.0
+matplotlib>=3.7
+openpyxl>=3.1
