@@ -86,6 +86,12 @@ except ImportError:
     data_trust_explanation = None
     build_multilingual_system_prompt = None
     get_suggested_questions = None
+try:
+    from report.reports_ui import render_reports_page
+    _REPORTS_UI_AVAILABLE = True
+except ImportError:
+    render_reports_page = None
+    _REPORTS_UI_AVAILABLE = False
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
