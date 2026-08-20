@@ -1,0 +1,11 @@
+# Additional dependencies for the NovaMS Report Engine.
+# Everything else it needs (pandas, numpy, scikit-learn) is already
+# required by the main NovaMS app.
+
+reportlab>=4.0
+matplotlib>=3.7
+openpyxl>=3.1        # already used elsewhere in NovaMS for .xlsx import
+
+# Optional — only needed for the in-app "Preview" button on the Reports
+# page. Without it, Preview is disabled but Download still works fine.
+pymupdf>=1.23
