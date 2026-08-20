@@ -6460,7 +6460,7 @@ _PAGE_RENDERERS = {
         theme_primary=_theme_vars.get("primary"),
         theme_chart_palette=_theme_vars.get("chart_palette"),
     )) if _REPORTS_UI_AVAILABLE else (lambda: st.error(
-        "Report Engine module not found — add reports_ui.py and the reports/ package.")),
+        "Report Engine module not found — add render_reports_page.py to the report/ package.")),
 }
 
 _PAGE_RENDERERS.get(active_page, render_executive_overview)()
