@@ -10,11 +10,12 @@ INTEGRATION (streamlit_app.py) — 3 small, additive edits, nothing else:
 1. Near the other optional-import try/except blocks at the top of
    streamlit_app.py, add:
 
-       try:
-           from reports_ui import render_reports_page
-           _REPORTS_UI_AVAILABLE = True
-       except ImportError:
-           _REPORTS_UI_AVAILABLE = False
+      try:
+    from report.reports_ui import render_reports_page
+    _REPORTS_UI_AVAILABLE = True
+except ImportError:
+    render_reports_page = None
+    _REPORTS_UI_AVAILABLE = False
 
 2. In the NAV_PAGES list, add "Reports" (anywhere — e.g. right after
    "Data Explorer"):
