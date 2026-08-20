@@ -10,8 +10,8 @@ INTEGRATION (streamlit_app.py) — 3 small, additive edits, nothing else:
 1. Near the other optional-import try/except blocks at the top of
    streamlit_app.py, add:
 
-      try:
-    from report.reports_ui import render_reports_page
+  try:
+    from report.render_reports_page import render_reports_page
     _REPORTS_UI_AVAILABLE = True
 except ImportError:
     render_reports_page = None
