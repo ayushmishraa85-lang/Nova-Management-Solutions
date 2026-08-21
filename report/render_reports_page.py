@@ -53,7 +53,7 @@ import tempfile
 import streamlit as st
 import pandas as pd
 
-from reports import ReportEngine, REPORT_ENGINE_AVAILABLE, REPORT_ENGINE_IMPORT_ERROR
+from .report_engine import ReportEngine, REPORT_ENGINE_AVAILABLE, REPORT_ENGINE_IMPORT_ERROR
 
 _REPORT_TYPES = ["Executive Report", "Board Summary", "Investor Update", "Monthly Business Review"]
 _NOTEBOOK_REPORT_TYPES = ["EDA / Analysis Report", "Lab Report", "Project Report"]
