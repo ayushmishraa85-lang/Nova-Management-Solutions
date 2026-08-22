@@ -434,6 +434,57 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
   font-weight: 600;
 }
 
+/* ── Glitch fixes: blue selection/highlight around nav rows ──────────────
+   Root cause is a combination of (1) WebKit/Chrome's default tap-highlight
+   rectangle, which paints a solid blue box over whatever was just tapped/
+   clicked — this is what shows up as a stray blue box around "AI Analyst"
+   and the "SYSTEM" pseudo-label, since both sit inside a clickable <label>;
+   (2) the browser's default text-selection color leaking through onto the
+   generated "SYSTEM"/"NEW" pseudo-content; and (3) the label and its
+   pseudo-elements never having an explicit outline/focus style, so the
+   browser's default focus ring can render on click. All three are reset
+   here, on the label and its ::before/::after content specifically, so
+   nothing about layout, color tokens, or click behavior changes — only
+   these unintended native paint effects are turned off. */
+section[data-testid="stSidebar"] [role="radiogroup"] label,
+section[data-testid="stSidebar"] [role="radiogroup"] label * {
+  -webkit-tap-highlight-color: transparent !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  user-select: none !important;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label::after {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label::selection,
+section[data-testid="stSidebar"] [role="radiogroup"] label *::selection {
+  background: transparent !important;
+  color: inherit !important;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:focus,
+section[data-testid="stSidebar"] [role="radiogroup"] label:focus-visible,
+section[data-testid="stSidebar"] [role="radiogroup"] label *:focus,
+section[data-testid="stSidebar"] [role="radiogroup"] label *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+/* Belt-and-suspenders on top of the existing display:none rules above —
+   fully collapses the native radio input/marker regardless of exactly how
+   this Streamlit/BaseWeb version nests it, so no residual dot/circle can
+   render next to the icon. */
+section[data-testid="stSidebar"] [role="radiogroup"] label input[type="radio"] {
+  display: none !important;
+  position: absolute !important;
+  width: 0 !important; height: 0 !important;
+  opacity: 0 !important; pointer-events: none !important;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label svg {
+  display: none !important;
+}
+
 /* Icons — inline-SVG CSS masks (font-independent, cannot silently fail
    like a webfont ligature can). One shared base rule + per-item shape. */
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before,
@@ -587,6 +638,73 @@ section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12)::befo
 }
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):hover::before,
 section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+
+/* Icon + "SYSTEM" section label for the 13th nav item (Data Engine) —
+   standalone rule only, items 1-12 and their existing icon/section CSS
+   above are completely untouched. Database/data-stack glyph. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13) {
+  position: relative; margin-top: 18px;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13)::after {
+  content: "SYSTEM";
+  position: absolute; left: 12px; top: -20px;
+  font-size: 10px; font-weight: 700; color: var(--nova-muted);
+  letter-spacing: .1em; text-transform: uppercase;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13)::before {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .15s ease;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5'/%3E%3Cpath d='M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5'/%3E%3Cpath d='M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13):hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13):has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+
+/* Icon for the 14th nav item (Explore) — standalone rule only, items
+   1-13 above are completely untouched. Compass glyph. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14)::before {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .15s ease;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M15.5 8.5 13 13l-4.5 2.5L11 11z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M15.5 8.5 13 13l-4.5 2.5L11 11z'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14):hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14):has(input:checked)::before {
+  background-color: var(--nova-blue);
+}
+
+/* Icon for the 15th nav item (Reports) — standalone rule only, items
+   1-14 above are completely untouched. Document/report glyph. */
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15)::before {
+  content: "";
+  display: inline-block; flex-shrink: 0;
+  width: 17px; height: 17px; margin-right: 11px;
+  background-color: var(--nova-ink-soft);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: center; mask-position: center;
+  -webkit-mask-size: contain; mask-size: contain;
+  transition: background-color .15s ease;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v15H6Z'/%3E%3Cpath d='M15 2v5h5' fill='none' stroke='black' stroke-width='2'/%3E%3Crect x='8.5' y='11' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='14.5' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='18' width='4.5' height='1.6' rx='.5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v15H6Z'/%3E%3Cpath d='M15 2v5h5' fill='none' stroke='black' stroke-width='2'/%3E%3Crect x='8.5' y='11' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='14.5' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='18' width='4.5' height='1.6' rx='.5'/%3E%3C/svg%3E");
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15):hover::before,
+section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15):has(input:checked)::before {
   background-color: var(--nova-blue);
 }
 
