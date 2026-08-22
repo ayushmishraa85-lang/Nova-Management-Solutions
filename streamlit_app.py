@@ -167,6 +167,7 @@ p, span, div { -webkit-font-smoothing: antialiased; }
   border-radius: 10px;
   padding: 13px 14px 15px;
   height: 100%;
+  min-height: 128px;
   box-sizing: border-box;
   position: relative;
   opacity: 0;
@@ -3457,10 +3458,14 @@ def _nova_sparkline_svg(values, color: str, width: int = 46, height: int = 26) -
 
 _NOVA_KPI_ACCENTS = {
     # (chip background, chip foreground — CSS var(), safe in plain CSS)  (literal hex — used inside raw SVG attributes)
-    "blue":   ("var(--nova-blue-tint)",  "var(--nova-blue)",  "#1D4DFF"),
-    "green":  ("var(--nova-green-tint)", "var(--nova-green)", "#22C55E"),
-    "amber":  ("var(--nova-amber-tint)", "var(--nova-amber)", "#D97706"),
-    "red":    ("var(--nova-red-tint)",   "var(--nova-red)",   "#EF4444"),
+    # The hex values are pulled from _theme_vars (computed earlier from the
+    # active theme preset / custom colors) rather than hardcoded, so the
+    # sparkline/ring SVGs — which can't use CSS var() since they're raw
+    # inline SVG markup — repaint correctly when the person switches theme.
+    "blue":   ("var(--nova-blue-tint)",  "var(--nova-blue)",  _theme_vars.get("primary", "#1D4DFF")),
+    "green":  ("var(--nova-green-tint)", "var(--nova-green)", _theme_vars.get("success", "#22C55E")),
+    "amber":  ("var(--nova-amber-tint)", "var(--nova-amber)", _theme_vars.get("warning", "#D97706")),
+    "red":    ("var(--nova-red-tint)",   "var(--nova-red)",   _theme_vars.get("danger",  "#EF4444")),
     "violet": ("rgba(139,92,246,.14)",   "#8b5cf6",            "#8b5cf6"),
 }
 
@@ -5445,6 +5450,8 @@ def render_executive_overview():
                     [fmt(kpis["city_rev"].iloc[0]) if len(kpis["city_rev"]) else "—",
                      f"{_top_city_pct:.1f}% of Total" if len(kpis["city_rev"]) else ""],
                     accent="blue", delay=0.30)
+
+    st.markdown('<div style="height:12px"></div>', unsafe_allow_html=True)
 
     c7,c8,c9,c10 = st.columns([1, 1, 1, 1.6])
     with c7:
