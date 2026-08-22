@@ -392,320 +392,110 @@ section[data-testid="stSidebar"] h4 {
   font-weight:700;
 }
 
-/* ── Navigation — turn the st.radio group into quiet nav rows ────────── */
-section[data-testid="stSidebar"] [role="radiogroup"] {
-  display: flex; flex-direction: column; gap: 2px;
+/* ══════════════════════════════════════════════════════════════════════
+   NAVIGATION v2 — real st.button() rows instead of a disguised st.radio.
+   The previous version hid a BaseWeb radio group with CSS, which kept
+   leaking native browser artifacts (tap-highlight rectangles, focus
+   rings, an undisguisable radio dot) because those are painted by the
+   browser/BaseWeb before our CSS ever runs. Real <button> elements don't
+   carry any of that baggage, so this replaces the radio group with one
+   st.button per page (icon + label together in the button's own text),
+   grouped under plain section headers. Active page is shown via
+   Streamlit's own type="primary" vs type="secondary", so no custom
+   "checked" state or positional nth-of-type hack is needed anywhere.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.nova-nav-section {
+  font-size: 10px; font-weight: 700; color: var(--nova-muted);
+  text-transform: uppercase; letter-spacing: .1em;
+  margin: 18px 0 6px 2px;
 }
-/* Hide BaseWeb's native radio dot graphic — row look only (targets the
-   stable data-baseweb wrapper first, with a positional fallback) */
-section[data-testid="stSidebar"] [role="radiogroup"] label [data-baseweb="radio"] {
-  display: none !important;
+.nova-nav-section:first-of-type { margin-top: 4px; }
+
+section[data-testid="stSidebar"] [data-testid="stButton"] {
+  margin-bottom: 1px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
-  display: none !important;
-}
-/* Extra fallback: hide every child of the label except the last one
-   (the text wrapper), regardless of exactly how Streamlit/BaseWeb nests
-   the radio circle in this version. */
-section[data-testid="stSidebar"] [role="radiogroup"] label > *:not(:last-child) {
-  display: none !important;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label {
-  position: relative;
-  display: flex; align-items: center;
-  height: 42px; padding: 0 12px; margin-bottom: 1px;
+section[data-testid="stSidebar"] [data-testid="stButton"] button {
+  width: 100%;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 11px;
+  height: 42px; padding: 0 12px;
   border-radius: 8px;
-  border-left: 3px solid transparent;
+  border: none; border-left: 3px solid transparent;
   background: transparent;
-  color: var(--nova-ink-soft);
-  font-weight: 500; font-size: 13.5px;
-  cursor: pointer; box-sizing: border-box; overflow: visible;
+  color: var(--nova-ink-soft) !important;
+  font-weight: 500; font-size: 13.5px; text-align: left;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
   transition: background-color .15s ease, color .15s ease, border-color .15s ease;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label * { color: inherit !important; font-weight: inherit !important; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+section[data-testid="stSidebar"] [data-testid="stButton"] button p {
+  font-weight: inherit; font-size: inherit; color: inherit !important;
+  text-align: left; margin: 0;
+}
+section[data-testid="stSidebar"] [data-testid="stButton"] button:hover {
   background: var(--nova-sidebar-2);
-  color: var(--nova-ink);
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
-  background: var(--nova-blue-tint) !important;
-  border-left-color: var(--nova-blue);
   color: var(--nova-ink) !important;
-  font-weight: 600;
+  border-color: transparent;
 }
-
-/* ── Glitch fixes: blue selection/highlight around nav rows ──────────────
-   Root cause is a combination of (1) WebKit/Chrome's default tap-highlight
-   rectangle, which paints a solid blue box over whatever was just tapped/
-   clicked — this is what shows up as a stray blue box around "AI Analyst"
-   and the "SYSTEM" pseudo-label, since both sit inside a clickable <label>;
-   (2) the browser's default text-selection color leaking through onto the
-   generated "SYSTEM"/"NEW" pseudo-content; and (3) the label and its
-   pseudo-elements never having an explicit outline/focus style, so the
-   browser's default focus ring can render on click. All three are reset
-   here, on the label and its ::before/::after content specifically, so
-   nothing about layout, color tokens, or click behavior changes — only
-   these unintended native paint effects are turned off. */
-section[data-testid="stSidebar"] [role="radiogroup"] label,
-section[data-testid="stSidebar"] [role="radiogroup"] label * {
-  -webkit-tap-highlight-color: transparent !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  user-select: none !important;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label::after {
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  pointer-events: none !important;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label::selection,
-section[data-testid="stSidebar"] [role="radiogroup"] label *::selection {
-  background: transparent !important;
-  color: inherit !important;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:focus,
-section[data-testid="stSidebar"] [role="radiogroup"] label:focus-visible,
-section[data-testid="stSidebar"] [role="radiogroup"] label *:focus,
-section[data-testid="stSidebar"] [role="radiogroup"] label *:focus-visible {
+section[data-testid="stSidebar"] [data-testid="stButton"] button:focus,
+section[data-testid="stSidebar"] [data-testid="stButton"] button:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
-/* Belt-and-suspenders on top of the existing display:none rules above —
-   fully collapses the native radio input/marker regardless of exactly how
-   this Streamlit/BaseWeb version nests it, so no residual dot/circle can
-   render next to the icon. */
-section[data-testid="stSidebar"] [role="radiogroup"] label input[type="radio"] {
-  display: none !important;
-  position: absolute !important;
-  width: 0 !important; height: 0 !important;
-  opacity: 0 !important; pointer-events: none !important;
+/* Active page — Streamlit's own primary-button styling, restyled to read
+   as a selected nav row (tint fill + left accent bar) instead of a red
+   primary button. */
+section[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"],
+section[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
+  background: var(--nova-blue-tint) !important;
+  border-left-color: var(--nova-blue) !important;
+  color: var(--nova-ink) !important;
+  font-weight: 600;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label svg {
-  display: none !important;
-}
-
-/* Icons — inline-SVG CSS masks (font-independent, cannot silently fail
-   like a webfont ligature can). One shared base rule + per-item shape. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked)::before {
-  background-color: var(--nova-blue);
-}
-/* Item 10 is the only item whose icon lives on ::after (its ::before holds
-   the "SYSTEM" header instead) — scoped separately so this never touches
-   item 9's ::after, which holds the "NEW" badge, not an icon. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):hover::after,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10):has(input:checked)::after {
-  background-color: var(--nova-blue);
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='8' height='8' rx='2'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='3' width='8' height='8' rx='2'/%3E%3Crect x='13' y='3' width='8' height='8' rx='2'/%3E%3Crect x='3' y='13' width='8' height='8' rx='2'/%3E%3Crect x='13' y='13' width='8' height='8' rx='2'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(2)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='13' width='4' height='8' rx='1'/%3E%3Crect x='10' y='8' width='4' height='13' rx='1'/%3E%3Crect x='17' y='3' width='4' height='18' rx='1'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='13' width='4' height='8' rx='1'/%3E%3Crect x='10' y='8' width='4' height='13' rx='1'/%3E%3Crect x='17' y='3' width='4' height='18' rx='1'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(3)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='6' width='6' height='11' rx='1.5'/%3E%3Crect x='11' y='2' width='2' height='4'/%3E%3Crect x='11' y='17' width='2' height='4'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='9' y='6' width='6' height='11' rx='1.5'/%3E%3Crect x='11' y='2' width='2' height='4'/%3E%3Crect x='11' y='17' width='2' height='4'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(4)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L21 7 V17 L12 22 L3 17 V7 Z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L21 7 V17 L12 22 L3 17 V7 Z'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(5)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='7' rx='1.5'/%3E%3Crect x='3' y='13' width='18' height='7' rx='1.5'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='7' rx='1.5'/%3E%3Crect x='3' y='13' width='18' height='7' rx='1.5'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(6)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='6' cy='7' r='2.5'/%3E%3Crect x='9' y='6' width='12' height='2' rx='1'/%3E%3Ccircle cx='18' cy='14' r='2.5'/%3E%3Crect x='3' y='13' width='12' height='2' rx='1'/%3E%3Ccircle cx='9' cy='20' r='2.5'/%3E%3Crect x='12' y='19' width='9' height='2' rx='1'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='6' cy='7' r='2.5'/%3E%3Crect x='9' y='6' width='12' height='2' rx='1'/%3E%3Ccircle cx='18' cy='14' r='2.5'/%3E%3Crect x='3' y='13' width='12' height='2' rx='1'/%3E%3Ccircle cx='9' cy='20' r='2.5'/%3E%3Crect x='12' y='19' width='9' height='2' rx='1'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(7)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='17' cy='8' r='3'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='9' cy='9' r='4'/%3E%3Ccircle cx='17' cy='8' r='3'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::before {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 L14 9 L21 12 L14 15 L12 22 L10 15 L3 12 L10 9 Z'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { padding-left: 42px; }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::after {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%); margin-right: 0;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='12' rx='9' ry='3'/%3E%3Cellipse cx='12' cy='19' rx='9' ry='3'/%3E%3C/svg%3E");
+section[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"]:hover,
+section[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"]:hover {
+  background: var(--nova-blue-tint) !important;
 }
 
-/* Section headers — attached to the preceding/following item so no
-   pseudo-element ever needs to serve two purposes on the same label */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1)::after {
-  content: "ANALYTICS";
-  position: absolute; left: 12px; top: 100%; margin-top: 12px;
-  font-size: 10px; font-weight: 700; color: var(--nova-muted);
-  letter-spacing: .1em; text-transform: uppercase;
+/* ── Upgrade card ─────────────────────────────────────────────────────── */
+.nova-upgrade-card {
+  background: linear-gradient(165deg, var(--nova-blue-tint), var(--nova-card) 70%);
+  border: 1px solid rgba(29,77,255,.28);
+  border-radius: 12px;
+  padding: 14px 15px 15px;
+  margin: 14px 0 4px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(1) { margin-bottom: 30px; }
-
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8)::after {
-  content: "AI MODULES";
-  position: absolute; left: 12px; top: 100%; margin-top: 12px;
-  font-size: 10px; font-weight: 700; color: var(--nova-muted);
-  letter-spacing: .1em; text-transform: uppercase;
+.nova-upgrade-card .ug-label {
+  font-size: 9.5px; font-weight: 700; color: var(--nova-blue);
+  text-transform: uppercase; letter-spacing: .09em; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(8) { margin-bottom: 30px; }
-
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10)::before {
-  content: "SYSTEM";
-  position: absolute; left: 12px; top: -20px;
-  font-size: 10px; font-weight: 700; color: var(--nova-muted);
-  letter-spacing: .1em; text-transform: uppercase;
+.nova-upgrade-card .ug-title {
+  font-size: 13.5px; font-weight: 700; color: var(--nova-ink); margin-bottom: 3px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(10) { margin-top: 18px; }
-
-/* "NEW" badge — AI Analyst (BlinkBot) item only. Flat tint, matching the
-   .up/.down WoW-delta badges already used on the KPI cards elsewhere. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9) {
-  position: relative;
+.nova-upgrade-card .ug-sub {
+  font-size: 11px; color: var(--nova-ink-soft); line-height: 1.5; margin-bottom: 12px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(9)::after {
-  content: "NEW";
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  font-size: 9px; font-weight: 700; letter-spacing: .04em;
-  color: var(--nova-blue); background: var(--nova-blue-tint);
-  padding: 2px 6px; border-radius: 4px;
+/* The "Upgrade" button is a sibling of the card markdown (Streamlit
+   renders st.markdown and st.button as separate elements, not nested),
+   so it's targeted via an adjacent-sibling match off the card itself
+   rather than a descendant selector. */
+section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"]:has(.nova-upgrade-card),
+section[data-testid="stSidebar"] div:has(> [data-testid="stMarkdownContainer"] .nova-upgrade-card) {
+  margin-bottom: -12px;
 }
-
-/* Icon + section label for the new 11th nav item (Sales by Location) —
-   standalone rules only, so items 1-10 and all their existing icon/section
-   CSS above are completely untouched. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11) {
-  margin-top: 8px;
+section[data-testid="stSidebar"] div:has(> [data-testid="stMarkdownContainer"] .nova-upgrade-card) + div [data-testid="stButton"] button {
+  background: var(--nova-blue) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  height: 34px !important;
+  margin-bottom: 14px;
 }
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11)::before {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11):hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(11):has(input:checked)::before {
-  background-color: var(--nova-blue);
-}
-
-/* Icon for the new 12th nav item (Product Analytics) — standalone rule
-   only, items 1-11 above are completely untouched. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12)::before {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='11' width='4' height='10' rx='1'/%3E%3Crect x='10' y='6' width='4' height='15' rx='1'/%3E%3Crect x='17' y='2' width='4' height='19' rx='1'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='11' width='4' height='10' rx='1'/%3E%3Crect x='10' y='6' width='4' height='15' rx='1'/%3E%3Crect x='17' y='2' width='4' height='19' rx='1'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(12):has(input:checked)::before {
-  background-color: var(--nova-blue);
-}
-
-/* Icon + "SYSTEM" section label for the 13th nav item (Data Engine) —
-   standalone rule only, items 1-12 and their existing icon/section CSS
-   above are completely untouched. Database/data-stack glyph. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13) {
-  position: relative; margin-top: 18px;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13)::after {
-  content: "SYSTEM";
-  position: absolute; left: 12px; top: -20px;
-  font-size: 10px; font-weight: 700; color: var(--nova-muted);
-  letter-spacing: .1em; text-transform: uppercase;
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13)::before {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5'/%3E%3Cpath d='M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5'/%3E%3Cpath d='M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13):hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(13):has(input:checked)::before {
-  background-color: var(--nova-blue);
-}
-
-/* Icon for the 14th nav item (Explore) — standalone rule only, items
-   1-13 above are completely untouched. Compass glyph. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14)::before {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M15.5 8.5 13 13l-4.5 2.5L11 11z'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M15.5 8.5 13 13l-4.5 2.5L11 11z'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14):hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(14):has(input:checked)::before {
-  background-color: var(--nova-blue);
-}
-
-/* Icon for the 15th nav item (Reports) — standalone rule only, items
-   1-14 above are completely untouched. Document/report glyph. */
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15)::before {
-  content: "";
-  display: inline-block; flex-shrink: 0;
-  width: 17px; height: 17px; margin-right: 11px;
-  background-color: var(--nova-ink-soft);
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: center; mask-position: center;
-  -webkit-mask-size: contain; mask-size: contain;
-  transition: background-color .15s ease;
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v15H6Z'/%3E%3Cpath d='M15 2v5h5' fill='none' stroke='black' stroke-width='2'/%3E%3Crect x='8.5' y='11' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='14.5' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='18' width='4.5' height='1.6' rx='.5'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 2h9l5 5v15H6Z'/%3E%3Cpath d='M15 2v5h5' fill='none' stroke='black' stroke-width='2'/%3E%3Crect x='8.5' y='11' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='14.5' width='7' height='1.6' rx='.5'/%3E%3Crect x='8.5' y='18' width='4.5' height='1.6' rx='.5'/%3E%3C/svg%3E");
-}
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15):hover::before,
-section[data-testid="stSidebar"] [role="radiogroup"] label:nth-of-type(15):has(input:checked)::before {
-  background-color: var(--nova-blue);
+section[data-testid="stSidebar"] div:has(> [data-testid="stMarkdownContainer"] .nova-upgrade-card) + div [data-testid="stButton"] button:hover {
+  background: #1740D6 !important;
 }
 
 /* ── Inputs / selects inside the sidebar ─────────────────────────────── */
@@ -4515,6 +4305,36 @@ NAV_PAGES = [
     "Reports",
 ]
 
+# Grouped + icon-labeled view of NAV_PAGES, used only by the sidebar button
+# renderer below — the flat NAV_PAGES list above (and every page name in it)
+# is unchanged, so _PAGE_RENDERERS dispatch and every existing key is
+# untouched. Each icon is embedded directly in the button's own text
+# (emoji), so nothing here depends on CSS mask-image icons or any
+# positional nth-of-type styling.
+NAV_GROUPS = [
+    ("ANALYTICS", [
+        ("Executive Overview",     "📊"),
+        ("Sales Analytics",        "📈"),
+        ("Box Plot Analysis",      "🧮"),
+        ("Delivery Analytics",     "🚚"),
+        ("Inventory Intelligence", "🗃️"),
+        ("Operations",             "⚙️"),
+        ("Customer Analytics",     "👥"),
+        ("Finance",                "💰"),
+    ]),
+    ("AI MODULES", [
+        ("AI Analyst",             "🤖"),
+    ]),
+    ("SYSTEM", [
+        ("Data Explorer",          "🔎"),
+        ("Sales by Location",      "📍"),
+        ("Product Analytics",      "🏷️"),
+        ("Data Engine",            "🗄️"),
+        ("Explore",                "🧭"),
+        ("Reports",                "📄"),
+    ]),
+]
+
 
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── SIDEBAR: BRAND · NAVIGATION · DATA SOURCE · FILTERS · SETTINGS · AI MODE
@@ -4544,7 +4364,32 @@ with st.sidebar:
         """, unsafe_allow_html=True)
         active_page = "Universal Dashboard"
     else:
-        active_page = st.radio("Go to", NAV_PAGES, label_visibility="collapsed", key="nav_page")
+        if "nav_page" not in st.session_state:
+            st.session_state["nav_page"] = NAV_PAGES[0]
+
+        for _group_label, _group_items in NAV_GROUPS:
+            st.markdown(f'<div class="nova-nav-section">{_group_label}</div>', unsafe_allow_html=True)
+            for _page_name, _page_icon in _group_items:
+                _is_active = st.session_state["nav_page"] == _page_name
+                if st.button(
+                    f"{_page_icon}  {_page_name}",
+                    key=f"navbtn_{_page_name}",
+                    use_container_width=True,
+                    type="primary" if _is_active else "secondary",
+                ):
+                    st.session_state["nav_page"] = _page_name
+                    st.rerun()
+
+        active_page = st.session_state["nav_page"]
+
+        st.markdown("""
+        <div class="nova-upgrade-card">
+          <div class="ug-label">✨ UPGRADE</div>
+          <div class="ug-title">NovaMS Pro</div>
+          <div class="ug-sub">Unlock advanced analytics, AI features &amp; reports.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("Upgrade", key="nav_upgrade_btn", use_container_width=True)
 
     st.markdown("---")
     st.markdown("#### 📂 Data Source")
