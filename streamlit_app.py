@@ -472,7 +472,7 @@ section[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="st
 /* ── Upgrade card ─────────────────────────────────────────────────────── */
 .nova-upgrade-card {
   background: linear-gradient(165deg, var(--nova-blue-tint), var(--nova-card) 70%);
-  border: 1px solid rgba(29,77,255,.28);
+  border: 1px solid var(--nova-blue-tint);
   border-radius: 12px;
   padding: 14px 15px 15px;
   margin: 14px 0 4px;
@@ -506,7 +506,8 @@ section[data-testid="stSidebar"] div:has(> [data-testid="stMarkdownContainer"] .
   margin-bottom: 14px;
 }
 section[data-testid="stSidebar"] div:has(> [data-testid="stMarkdownContainer"] .nova-upgrade-card) + div [data-testid="stButton"] button:hover {
-  background: #1740D6 !important;
+  background: var(--nova-blue) !important;
+  filter: brightness(.87);
 }
 
 /* ── Inputs / selects inside the sidebar ─────────────────────────────── */
@@ -1722,8 +1723,130 @@ def detect_top_anomaly(df: pd.DataFrame, z_threshold: float = 3.0) -> dict | Non
 
 
 # ══════════════════════════════════════════════════════════════════════════════════
-# ── BLINKBOT — MULTI-TURN MEMORY & RICH RESPONSE FORMATTING
+# ── TIME ANALYSIS — intelligent date detection + day/month/year aggregation
+# (additive only — reused by both the Executive Overview trend card and the
+# dedicated Time Analysis page below; no existing function is modified.
+# Everything here is plain pandas/numpy — no LLM call is involved in any
+# date grouping, aggregation, or growth/insight calculation.)
 # ══════════════════════════════════════════════════════════════════════════════════
+
+_DATE_COLUMN_CANDIDATES = [
+    "date", "order date", "sales date", "transaction date", "created at",
+    "timestamp", "invoice date", "order_date", "transaction_date",
+    "order timestamp", "purchase date",
+]
+
+
+@st.cache_data(show_spinner=False)
+def detect_date_column(df: pd.DataFrame) -> str | None:
+    """
+    Looks for a usable date/timestamp column: first by common name (exact or
+    normalized match against _DATE_COLUMN_CANDIDATES), then falls back to
+    any column that's already a real datetime dtype, then to any remaining
+    column whose values mostly parse as dates. A column only qualifies if
+    at least 80% of its non-null values parse successfully — this avoids
+    mistaking an unrelated text/ID column for a date column. Returns None
+    (never a fabricated column) if nothing qualifies.
+    """
+    if df is None or df.empty:
+        return None
+
+    def _norm(s: str) -> str:
+        return "".join(ch for ch in str(s).lower().strip() if ch.isalnum() or ch == " ").strip()
+
+    normalized = {_norm(c): c for c in df.columns}
+
+    def _parses_well(col: str) -> bool:
+        try:
+            parsed = pd.to_datetime(df[col], errors="coerce", format="mixed")
+        except Exception:
+            return False
+        valid = parsed.notna().sum()
+        total = df[col].notna().sum()
+        return total > 0 and (valid / total) >= 0.8
+
+    # 1) Exact/normalized name match, in priority order
+    for candidate in _DATE_COLUMN_CANDIDATES:
+        if candidate in normalized and _parses_well(normalized[candidate]):
+            return normalized[candidate]
+
+    # 2) Already a genuine datetime dtype
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            return col
+
+    # 3) Any column with "date" or "time" in its name that parses well
+    for col in df.columns:
+        if ("date" in col.lower() or "time" in col.lower()) and _parses_well(col):
+            return col
+
+    return None
+
+
+def build_time_table(df: pd.DataFrame, date_col: str, level: str) -> pd.DataFrame:
+    """
+    Aggregates the (already-filtered) dataframe by Day / Month / Year.
+    Month is grouped by Year+Month together (never by month name alone) so
+    e.g. January 2025 and January 2026 never collapse into one row. Every
+    value here is a real aggregate of the current dataset — nothing is
+    interpolated or invented for missing periods.
+    """
+    work = df.copy()
+    work["_dt"] = pd.to_datetime(work[date_col], errors="coerce", format="mixed")
+    work = work.dropna(subset=["_dt"])
+    if work.empty:
+        return pd.DataFrame()
+
+    if level == "Day":
+        work["_period"] = work["_dt"].dt.date
+        work["_period_label"] = work["_dt"].dt.strftime("%d %b %Y")
+        work["_sort_key"] = work["_dt"].dt.normalize()
+    elif level == "Month":
+        work["_period"] = work["_dt"].dt.to_period("M")
+        work["_period_label"] = work["_dt"].dt.strftime("%b %Y")
+        work["_sort_key"] = work["_dt"].dt.to_period("M").dt.to_timestamp()
+    else:  # Year
+        work["_period"] = work["_dt"].dt.year
+        work["_period_label"] = work["_dt"].dt.year.astype(str)
+        work["_sort_key"] = pd.to_datetime(work["_dt"].dt.year.astype(str) + "-01-01")
+
+    agg = work.groupby(["_period", "_period_label", "_sort_key"], as_index=False).agg(
+        Revenue=("Total Revenue", "sum"),
+        Profit=("Profit", "sum"),
+        Orders=("Orders", "sum"),
+    )
+    agg["AOV"] = np.where(agg["Orders"] > 0, agg["Revenue"] / agg["Orders"], 0)
+    agg["Margin"] = np.where(agg["Revenue"] > 0, agg["Profit"] / agg["Revenue"] * 100, 0)
+    agg = agg.sort_values("_sort_key").reset_index(drop=True)
+    agg["Growth %"] = agg["Revenue"].pct_change() * 100
+    return agg
+
+
+def time_table_insights(agg: pd.DataFrame, level: str) -> list[str]:
+    """Plain pandas/numpy-derived insight bullets — no LLM involved."""
+    if agg is None or agg.empty:
+        return []
+    unit = {"Day": "day", "Month": "month", "Year": "year"}[level]
+    lines = []
+    best_rev = agg.loc[agg["Revenue"].idxmax()]
+    worst_rev = agg.loc[agg["Revenue"].idxmin()]
+    best_orders = agg.loc[agg["Orders"].idxmax()]
+    best_margin = agg.loc[agg["Margin"].idxmax()]
+    lines.append(f"**Best {unit.title()} (Revenue):** {best_rev['_period_label']} — {fmt(best_rev['Revenue'])}")
+    if len(agg) > 1:
+        lines.append(f"**Weakest {unit.title()} (Revenue):** {worst_rev['_period_label']} — {fmt(worst_rev['Revenue'])}")
+    lines.append(f"**Highest Orders:** {best_orders['_period_label']} — {int(best_orders['Orders']):,} orders")
+    lines.append(f"**Highest Profit Margin:** {best_margin['_period_label']} — {best_margin['Margin']:.1f}%")
+    valid_growth = agg["Growth %"].dropna()
+    if len(valid_growth):
+        latest_growth = agg["Growth %"].iloc[-1]
+        if pd.notna(latest_growth):
+            direction = "up" if latest_growth >= 0 else "down"
+            lines.append(f"**Latest {unit} vs previous:** revenue is {direction} {abs(latest_growth):.1f}%")
+    return lines
+
+
+
 
 class ConversationMemory:
     def __init__(self):
@@ -4307,6 +4430,7 @@ NAV_PAGES = [
     "Operations",
     "Customer Analytics",
     "Finance",
+    "Time Analysis",
     "AI Analyst",
     "Data Explorer",
     "Sales by Location",
@@ -4333,6 +4457,7 @@ NAV_GROUPS = [
         ("Operations",             "tune"),
         ("Customer Analytics",     "group"),
         ("Finance",                "account_balance_wallet"),
+        ("Time Analysis",          "calendar_month"),
     ]),
     ("AI MODULES", [
         ("AI Analyst",             "auto_awesome"),
@@ -5320,7 +5445,7 @@ def render_executive_overview():
                      f"{_top_city_pct:.1f}% of Total" if len(kpis["city_rev"]) else ""],
                     accent="blue", delay=0.30)
 
-    c7,c8,c9 = st.columns(3)
+    c7,c8,c9,c10 = st.columns([1, 1, 1, 1.6])
     with c7:
         kpi_card_v2("Top Category", kpis["cat_rev"].index[0] if len(kpis["cat_rev"]) else "—", "tag",
                     [fmt(kpis["cat_rev"].iloc[0]) if len(kpis["cat_rev"]) else "—"],
@@ -5332,6 +5457,48 @@ def render_executive_overview():
     with c9:
         kpi_card_v2("On-Time Delivery", f"{delivery['otd_pct']:.1f}%", "truck",
                     [f"● {_d_label}"], accent="green", ring_pct=delivery["otd_pct"], delay=0.48)
+    with c10:
+        # Compact "Performance Trend" card — fills the previously empty
+        # right-side column in this row. Built entirely from the current
+        # dataset via detect_date_column()/build_time_table() (defined near
+        # the Time Analysis feature above); if no usable date column exists
+        # in the current data, an honest message is shown instead of any
+        # fabricated trend — no dates/values here are invented.
+        _te_date_col = detect_date_column(df)
+        if _te_date_col:
+            _te_agg = build_time_table(df, _te_date_col, "Month")
+        else:
+            _te_agg = pd.DataFrame()
+        if _te_date_col and not _te_agg.empty:
+            _te_latest = _te_agg.iloc[-1]
+            _te_growth = _te_latest["Growth %"]
+            _te_growth_txt = f"{_te_growth:+.1f}%" if pd.notna(_te_growth) else "—"
+            _te_growth_up = bool(pd.notna(_te_growth) and _te_growth >= 0)
+            _te_spark = _nova_sparkline_svg(_te_agg["Revenue"].tail(12).values, "#1D4DFF", width=90, height=34)
+            st.markdown(f"""
+            <div class="insight-card" style="height:auto">
+              <div class="insight-title">📅 Performance Trend — {_te_latest['_period_label']}</div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:6px">
+                <div>
+                  <div style="font-size:20px;font-weight:700;color:var(--nova-ink);line-height:1.15">{fmt(_te_latest['Revenue'])}</div>
+                  <div class="kpi-badge {'up' if _te_growth_up else 'down'}" style="margin:6px 0">{_te_growth_txt} vs prev. month</div>
+                  <div style="font-size:11px;color:var(--nova-ink-soft);margin-top:2px">
+                    Orders: {int(_te_latest['Orders']):,} · Profit: {fmt(_te_latest['Profit'])}
+                  </div>
+                </div>
+                <div style="flex-shrink:0">{_te_spark}</div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="insight-card" style="height:auto">
+              <div class="insight-title">📅 Performance Trend</div>
+              <div class="insight-body">No date column was detected in the current dataset, so a
+              month-over-month trend can't be shown here. Visit <b>Time Analysis</b> in the sidebar
+              for day/month/year breakdowns once a date column is available.</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     narrative(
@@ -6413,6 +6580,93 @@ def render_data_engine():
 
     with st.expander("Full structured JSON output"):
         st.json(output)
+
+
+def render_time_analysis():
+    """
+    Dedicated 'Time Analysis' page — day/month/year drill-down built purely
+    from the already-filtered `df` (every sidebar filter applies
+    automatically) and detect_date_column()/build_time_table() above.
+    Nothing here touches Executive Overview or any other page; this is a
+    standalone additive page, registered separately in _PAGE_RENDERERS.
+    """
+    page_header("Time Analysis", "Day · Month · Year performance, calculated directly from your data")
+
+    date_col = detect_date_column(df)
+    if not date_col:
+        narrative(
+            "<b>Daily, monthly, and yearly analysis requires a valid date column in the dataset.</b> "
+            "No column matching common date/timestamp names (Date, Order Date, Transaction Date, "
+            "Created At, Timestamp, Invoice Date, etc.) was detected in the current dataset — "
+            "so no time-based breakdown is shown here. Nothing is estimated or invented to fill this gap."
+        )
+        return
+
+    st.caption(f"Using **{date_col}** as the date column for this analysis.")
+    level = st.radio("Time Period", ["Day", "Month", "Year"], horizontal=True, key="time_analysis_level")
+
+    agg = build_time_table(df, date_col, level)
+    if agg.empty:
+        st.warning(f"No rows in the current filter have a valid value in **{date_col}**.")
+        return
+    if level == "Year" and agg["_period"].nunique() < 2:
+        st.info(
+            f"Only one year ({agg.iloc[0]['_period_label']}) is present in the current data — "
+            f"showing it below. Year-over-year analysis requires data from multiple years."
+        )
+
+    st.markdown('<div class="section-head">Performance KPIs</div>', unsafe_allow_html=True)
+    latest = agg.iloc[-1]
+    growth = latest["Growth %"]
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    with k1: kpi_card("Revenue",       fmt(agg["Revenue"].sum()))
+    with k2: kpi_card("Profit",        fmt(agg["Profit"].sum()))
+    with k3: kpi_card("Orders",        f"{int(agg['Orders'].sum()):,}")
+    with k4: kpi_card("Avg Order Value", fmt(agg["Revenue"].sum() / agg["Orders"].sum() if agg["Orders"].sum() else 0))
+    with k5: kpi_card("Profit Margin", f"{(agg['Profit'].sum() / agg['Revenue'].sum() * 100 if agg['Revenue'].sum() else 0):.1f}%")
+    with k6:
+        growth_txt = f"{growth:+.1f}%" if pd.notna(growth) else "—"
+        kpi_card(f"Latest {level} Growth", growth_txt, f"vs previous {level.lower()}")
+
+    st.markdown('<div class="section-head">Trend Analysis</div>', unsafe_allow_html=True)
+    metric_choice = st.radio("Metric", ["Revenue", "Profit", "Orders", "AOV"], horizontal=True, key="time_analysis_metric")
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=agg["_period_label"], y=agg[metric_choice], mode="lines+markers",
+        line=dict(color="#1D4DFF", width=2.2), marker=dict(size=6),
+        fill="tozeroy", fillcolor=_hex_to_rgba("#1D4DFF", .08),
+        hovertemplate=f"<b>%{{x}}</b><br>{metric_choice}: " +
+                      ("₹%{y:,.0f}<extra></extra>" if metric_choice != "AOV" else "₹%{y:,.0f}<extra></extra>"),
+    ))
+    fig.update_layout(**PLOTLY_BASE,
+        title=dict(text=f"{metric_choice} by {level}", font=dict(color="#F1F5F9", size=13)),
+        height=340,
+        xaxis=dict(gridcolor="rgba(255,255,255,.05)", linecolor="rgba(255,255,255,.09)"),
+        yaxis=dict(tickprefix="₹" if metric_choice != "Orders" else "", **_AXIS_DEFAULTS),
+        showlegend=False,
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown('<div class="section-head">Detailed Breakdown</div>', unsafe_allow_html=True)
+    display_cols = {"_period_label": level, "Revenue": "Revenue", "Profit": "Profit",
+                     "Orders": "Orders", "AOV": "AOV", "Margin": "Margin", "Growth %": "Growth %"}
+    show_df = agg[list(display_cols.keys())].rename(columns=display_cols).copy()
+    show_df["Revenue"] = show_df["Revenue"].map(fmt)
+    show_df["Profit"]  = show_df["Profit"].map(fmt)
+    show_df["AOV"]     = show_df["AOV"].map(fmt)
+    show_df["Orders"]  = show_df["Orders"].map(lambda v: f"{int(v):,}")
+    show_df["Margin"]  = show_df["Margin"].map(lambda v: f"{v:.1f}%")
+    show_df["Growth %"] = show_df["Growth %"].map(lambda v: f"{v:+.1f}%" if pd.notna(v) else "—")
+    st.dataframe(show_df.iloc[::-1], use_container_width=True, height=min(400, 46 + 38 * len(show_df)), hide_index=True)
+
+    st.markdown('<div class="section-head">Key Insights</div>', unsafe_allow_html=True)
+    insight_lines = time_table_insights(agg, level)
+    if insight_lines:
+        st.markdown('<div class="narrative-box">' + "<br>".join(insight_lines) + "</div>", unsafe_allow_html=True)
+    else:
+        st.caption("Not enough data in the current filter to generate insights.")
+
+
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── MAIN — DISPATCH TO ACTIVE PAGE
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -6426,6 +6680,7 @@ _PAGE_RENDERERS = {
     "Operations":              render_operations,
     "Customer Analytics":      render_customer_analytics,
     "Finance":                 render_finance,
+    "Time Analysis":           render_time_analysis,
     "AI Analyst":              render_ai_analyst,
     "Data Explorer":           render_data_explorer,
     "Sales by Location":       render_sales_by_location,
