@@ -408,26 +408,37 @@ section[data-testid="stSidebar"] h4 {
 .nova-nav-section {
   font-size: 10px; font-weight: 700; color: var(--nova-muted);
   text-transform: uppercase; letter-spacing: .1em;
-  margin: 18px 0 6px 2px;
+  margin: 14px 0 5px 2px;
 }
-.nova-nav-section:first-of-type { margin-top: 4px; }
+.nova-nav-section:first-of-type { margin-top: 2px; }
 
 section[data-testid="stSidebar"] [data-testid="stButton"] {
-  margin-bottom: 1px;
+  margin-bottom: 0px;
 }
 section[data-testid="stSidebar"] [data-testid="stButton"] button {
   width: 100%;
   display: flex; align-items: center; justify-content: flex-start;
-  gap: 11px;
-  height: 42px; padding: 0 12px;
-  border-radius: 8px;
+  gap: 10px;
+  height: 35px; padding: 0 11px;
+  border-radius: 7px;
   border: none; border-left: 3px solid transparent;
   background: transparent;
   color: var(--nova-ink-soft) !important;
-  font-weight: 500; font-size: 13.5px; text-align: left;
+  font-weight: 500; font-size: 13px; text-align: left;
   box-shadow: none !important;
   -webkit-tap-highlight-color: transparent !important;
   transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+/* Streamlit renders the Material icon and the label text as separate
+   inline elements inside the button — force them onto one left-aligned
+   row with even spacing regardless of the exact wrapper markup. */
+section[data-testid="stSidebar"] [data-testid="stButton"] button > div {
+  display: flex !important; align-items: center !important; gap: 10px !important;
+  width: 100%;
+}
+section[data-testid="stSidebar"] [data-testid="stButton"] button [data-testid="stIconMaterial"] {
+  font-size: 17px !important; width: 17px; flex-shrink: 0;
+  color: inherit !important;
 }
 section[data-testid="stSidebar"] [data-testid="stButton"] button p {
   font-weight: inherit; font-size: inherit; color: inherit !important;
@@ -444,8 +455,8 @@ section[data-testid="stSidebar"] [data-testid="stButton"] button:focus-visible {
   box-shadow: none !important;
 }
 /* Active page — Streamlit's own primary-button styling, restyled to read
-   as a selected nav row (tint fill + left accent bar) instead of a red
-   primary button. */
+   as a selected nav row (tint fill + thin left accent bar + brighter icon
+   and text) instead of a red primary button. */
 section[data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"],
 section[data-testid="stSidebar"] [data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
   background: var(--nova-blue-tint) !important;
@@ -4308,30 +4319,31 @@ NAV_PAGES = [
 # Grouped + icon-labeled view of NAV_PAGES, used only by the sidebar button
 # renderer below — the flat NAV_PAGES list above (and every page name in it)
 # is unchanged, so _PAGE_RENDERERS dispatch and every existing key is
-# untouched. Each icon is embedded directly in the button's own text
-# (emoji), so nothing here depends on CSS mask-image icons or any
-# positional nth-of-type styling.
+# untouched. Icons use Streamlit's built-in Material Symbols set (passed via
+# st.button(icon=...)) instead of emoji — one consistent, professional icon
+# family with uniform stroke weight and sizing handled natively by
+# Streamlit, so nothing here depends on custom SVG/CSS mask-image icons.
 NAV_GROUPS = [
     ("ANALYTICS", [
-        ("Executive Overview",     "📊"),
-        ("Sales Analytics",        "📈"),
-        ("Box Plot Analysis",      "🧮"),
-        ("Delivery Analytics",     "🚚"),
-        ("Inventory Intelligence", "🗃️"),
-        ("Operations",             "⚙️"),
-        ("Customer Analytics",     "👥"),
-        ("Finance",                "💰"),
+        ("Executive Overview",     "dashboard"),
+        ("Sales Analytics",        "trending_up"),
+        ("Box Plot Analysis",      "candlestick_chart"),
+        ("Delivery Analytics",     "local_shipping"),
+        ("Inventory Intelligence", "inventory_2"),
+        ("Operations",             "tune"),
+        ("Customer Analytics",     "group"),
+        ("Finance",                "account_balance_wallet"),
     ]),
     ("AI MODULES", [
-        ("AI Analyst",             "🤖"),
+        ("AI Analyst",             "auto_awesome"),
     ]),
     ("SYSTEM", [
-        ("Data Explorer",          "🔎"),
-        ("Sales by Location",      "📍"),
-        ("Product Analytics",      "🏷️"),
-        ("Data Engine",            "🗄️"),
-        ("Explore",                "🧭"),
-        ("Reports",                "📄"),
+        ("Data Explorer",          "manage_search"),
+        ("Sales by Location",      "location_on"),
+        ("Product Analytics",      "bar_chart"),
+        ("Data Engine",            "storage"),
+        ("Explore",                "explore"),
+        ("Reports",                "summarize"),
     ]),
 ]
 
@@ -4372,7 +4384,8 @@ with st.sidebar:
             for _page_name, _page_icon in _group_items:
                 _is_active = st.session_state["nav_page"] == _page_name
                 if st.button(
-                    f"{_page_icon}  {_page_name}",
+                    _page_name,
+                    icon=f":material/{_page_icon}:",
                     key=f"navbtn_{_page_name}",
                     use_container_width=True,
                     type="primary" if _is_active else "secondary",
@@ -4384,12 +4397,15 @@ with st.sidebar:
 
         st.markdown("""
         <div class="nova-upgrade-card">
-          <div class="ug-label">✨ UPGRADE</div>
+          <div class="ug-label">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6.3 6.3l2.8 2.8M14.9 14.9l2.8 2.8M17.7 6.3l-2.8 2.8M9.1 14.9l-2.8 2.8"/></svg>
+            UPGRADE
+          </div>
           <div class="ug-title">NovaMS Pro</div>
-          <div class="ug-sub">Unlock advanced analytics, AI features &amp; reports.</div>
+          <div class="ug-sub">Advanced analytics, AI insights &amp; reports</div>
         </div>
         """, unsafe_allow_html=True)
-        st.button("Upgrade", key="nav_upgrade_btn", use_container_width=True)
+        st.button("Upgrade", icon=":material/arrow_forward:", key="nav_upgrade_btn", use_container_width=True)
 
     st.markdown("---")
     st.markdown("#### 📂 Data Source")
