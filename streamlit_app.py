@@ -3420,6 +3420,7 @@ _NOVA_KPI_ICONS = {
     "tag":          f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M20.59 13.41 11 3.83a2 2 0 0 0-1.41-.58H4a2 2 0 0 0-2 2v5.58c0 .53.21 1.04.59 1.42l9.58 9.59a2 2 0 0 0 2.82 0l6.6-6.6a2 2 0 0 0 0-2.83Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>',
     "receipt":      f'<svg {_NOVA_KPI_ICON_ATTRS}><path d="M4 2h16v20l-2.5-1.5L15 22l-2.5-1.5L10 22l-2.5-1.5L5 22l-1-1V2Z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>',
     "truck":        f'<svg {_NOVA_KPI_ICON_ATTRS}><rect x="1" y="3" width="14" height="13"/><path d="M15 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="17.5" cy="18.5" r="2.5"/></svg>',
+    "calendar":     f'<svg {_NOVA_KPI_ICON_ATTRS}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
 }
 
 
@@ -5459,11 +5460,14 @@ def render_executive_overview():
                     [f"● {_d_label}"], accent="green", ring_pct=delivery["otd_pct"], delay=0.48)
     with c10:
         # Compact "Performance Trend" card — fills the previously empty
-        # right-side column in this row. Built entirely from the current
-        # dataset via detect_date_column()/build_time_table() (defined near
-        # the Time Analysis feature above); if no usable date column exists
-        # in the current data, an honest message is shown instead of any
-        # fabricated trend — no dates/values here are invented.
+        # right-side column in this row. Uses the exact same kpi_card_v2()
+        # tile format as its row-mates (icon chip, badge, value, sparkline,
+        # bottom accent bar) instead of a differently-shaped card, so it
+        # lines up cleanly instead of looking cramped/mismatched. Built
+        # entirely from the current dataset via detect_date_column()/
+        # build_time_table() (defined near the Time Analysis feature
+        # above); if no usable date column exists, an honest empty state
+        # is shown instead of any fabricated trend.
         _te_date_col = detect_date_column(df)
         if _te_date_col:
             _te_agg = build_time_table(df, _te_date_col, "Month")
@@ -5472,33 +5476,20 @@ def render_executive_overview():
         if _te_date_col and not _te_agg.empty:
             _te_latest = _te_agg.iloc[-1]
             _te_growth = _te_latest["Growth %"]
-            _te_growth_txt = f"{_te_growth:+.1f}%" if pd.notna(_te_growth) else "—"
-            _te_growth_up = bool(pd.notna(_te_growth) and _te_growth >= 0)
-            _te_spark = _nova_sparkline_svg(_te_agg["Revenue"].tail(12).values, "#1D4DFF", width=90, height=34)
-            st.markdown(f"""
-            <div class="insight-card" style="height:auto">
-              <div class="insight-title">📅 Performance Trend — {_te_latest['_period_label']}</div>
-              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:6px">
-                <div>
-                  <div style="font-size:20px;font-weight:700;color:var(--nova-ink);line-height:1.15">{fmt(_te_latest['Revenue'])}</div>
-                  <div class="kpi-badge {'up' if _te_growth_up else 'down'}" style="margin:6px 0">{_te_growth_txt} vs prev. month</div>
-                  <div style="font-size:11px;color:var(--nova-ink-soft);margin-top:2px">
-                    Orders: {int(_te_latest['Orders']):,} · Profit: {fmt(_te_latest['Profit'])}
-                  </div>
-                </div>
-                <div style="flex-shrink:0">{_te_spark}</div>
-              </div>
-            </div>
-            """, unsafe_allow_html=True)
+            _te_growth_txt = f"{_te_growth:+.1f}%" if pd.notna(_te_growth) else "No prior month"
+            _te_growth_kind = "up" if (pd.notna(_te_growth) and _te_growth >= 0) else ("down" if pd.notna(_te_growth) else "neutral")
+            kpi_card_v2(
+                f"Trend — {_te_latest['_period_label']}", fmt(_te_latest["Revenue"]), "calendar",
+                [f"Orders {int(_te_latest['Orders']):,} · Profit {fmt(_te_latest['Profit'])}"],
+                _te_growth_txt, _te_growth_kind, accent="blue",
+                spark_values=_te_agg["Revenue"].tail(12).values, delay=0.54,
+            )
         else:
-            st.markdown("""
-            <div class="insight-card" style="height:auto">
-              <div class="insight-title">📅 Performance Trend</div>
-              <div class="insight-body">No date column was detected in the current dataset, so a
-              month-over-month trend can't be shown here. Visit <b>Time Analysis</b> in the sidebar
-              for day/month/year breakdowns once a date column is available.</div>
-            </div>
-            """, unsafe_allow_html=True)
+            kpi_card_v2(
+                "Performance Trend", "—", "calendar",
+                ["No date column detected", "See Time Analysis in sidebar"],
+                accent="blue", delay=0.54,
+            )
 
     st.markdown("<br>", unsafe_allow_html=True)
     narrative(
