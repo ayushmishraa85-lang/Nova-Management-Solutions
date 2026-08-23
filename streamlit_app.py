@@ -4496,6 +4496,25 @@ NAV_GROUPS = [
 # ══════════════════════════════════════════════════════════════════════════════════
 
 with st.sidebar:
+    # Touch every theme-backed widget key once, up front, before any button
+    # below can trigger st.rerun(). Streamlit prunes a widget's stored value
+    # if that widget hasn't been (re-)instantiated by the time a rerun is
+    # triggered mid-script — and the theme selectbox/color pickers live far
+    # down in this same sidebar (inside "Customize Dashboard"), well after
+    # the navigation buttons, filter-clear buttons, and dataset-action
+    # buttons above them. Without this, clicking any of those elsewhere in
+    # the sidebar silently reset the active theme back to "Nova Blue" on
+    # every navigation, which is the exact bug reported: Executive Overview
+    # would show a just-picked theme, but switching to Sales Analytics (or
+    # any other page) reverted it. A plain read/write here — no visible
+    # widget, no layout change — is enough to protect the value for the
+    # rest of this run; it changes no navigation, filter, or business logic.
+    for _tk in ["_theme_name", "_tc_primary", "_tc_bg", "_tc_card", "_tc_sidebar",
+                "_tc_text", "_tc_muted", "_tc_success", "_tc_warning", "_tc_danger",
+                "_tc_chart_palette_name"]:
+        if _tk in st.session_state:
+            st.session_state[_tk] = st.session_state[_tk]
+
     st.markdown("""
     <div class="nav-brand">
       <div class="logo">N</div>
