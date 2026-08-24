@@ -1,0 +1,20 @@
+# Environment variables — never commit DATABASE_URL, API keys, or secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+*.egg-info/
+
+# Streamlit local secrets (already git-ignored on Streamlit Cloud by default,
+# but protects local development too)
+.streamlit/secrets.toml
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+.idea/
