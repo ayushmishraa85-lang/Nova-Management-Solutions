@@ -10,3 +10,6 @@ pydantic
 reportlab>=4.0
 matplotlib>=3.7
 openpyxl>=3.1
+sqlalchemy>=2.0
+psycopg[binary]>=3.1
+python-dotenv
