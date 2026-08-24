@@ -92,6 +92,22 @@ try:
 except ImportError as e:
     render_reports_page = None
     _REPORTS_UI_AVAILABLE = False
+
+# PostgreSQL sales-warehouse layer (additive — separate from the existing
+# st.connection("postgresql")-backed dataset-blob save/load feature further
+# below, which is untouched). Soft-imports the same way every other
+# optional package above does, so the app runs identically with or without
+# these files/dependencies present.
+try:
+    from database import connection as pg_connection
+    from database import queries as pg_queries
+    from services.data_loader import load_and_import as pg_load_and_import
+    _POSTGRES_WAREHOUSE_AVAILABLE = True
+except ImportError:
+    pg_connection = None
+    pg_queries = None
+    pg_load_and_import = None
+    _POSTGRES_WAREHOUSE_AVAILABLE = False
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -1123,6 +1139,33 @@ def load_user_file(uploaded_file) -> pd.DataFrame:
     raw_df = _read_uploaded_dataframe(uploaded_file)
     _validate_columns(raw_df, uploaded_file.name)
     return clean(raw_df)
+
+
+def _warehouse_df_to_dashboard_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Maps the PostgreSQL sales-warehouse's normalized column names (city,
+    category, product, selling_price, cost_price, quantity, revenue,
+    influencer_active — see database/models.py) back onto the dashboard's
+    existing expected schema (REQUIRED_COLUMNS), so data loaded from the
+    warehouse flows through the exact same clean()/KPI/chart pipeline as a
+    CSV upload — nothing downstream needs to know or care where the data
+    came from. The warehouse schema has no Discount field (it was never
+    part of the requested SQL schema), so Discount is set to 0 for this
+    source rather than fabricated — an honest reflection that this data
+    source doesn't carry that field, not an invented value.
+    """
+    out = pd.DataFrame()
+    out["Product Name"] = df.get("product")
+    out["Category"] = df.get("category")
+    out["City"] = df.get("city")
+    out["Original Price"] = df.get("cost_price")
+    out["Current Price"] = df.get("selling_price")
+    out["Discount"] = 0
+    out["Orders"] = df.get("quantity")
+    out["Total Revenue"] = df.get("revenue")
+    if "influencer_active" in df.columns:
+        out["Influencer Active"] = df["influencer_active"].map({True: "Yes", False: "No"}).fillna("No")
+    return out
 
 
 def data_quality_report(df: pd.DataFrame) -> dict:
@@ -4038,6 +4081,18 @@ def render_data_trust_center():
     else:
         st.caption("💡 Connect a PostgreSQL database (see sidebar → Database) to save imports permanently.")
 
+    _pg_engine_for_save = pg_connection.get_engine() if _POSTGRES_WAREHOUSE_AVAILABLE else None
+    import_to_warehouse = False
+    if _pg_engine_for_save is not None:
+        import_to_warehouse = st.checkbox(
+            "🐘 Also import into PostgreSQL sales warehouse (SQL-queryable)",
+            value=False, key="import_to_pg_warehouse_checkbox",
+            help="Writes into a normalized `novams_sales` table you can query directly with SQL — "
+                 "a separate, additional destination from the dataset-save option above.",
+        )
+    elif _POSTGRES_WAREHOUSE_AVAILABLE:
+        st.caption("💡 Set `DATABASE_URL` (see sidebar → PostgreSQL Sales Warehouse) to also import into a SQL-queryable table.")
+
     b1, b2, b3 = st.columns(3)
     with b1:
         apply_clicked = st.button("Apply Recommended Fixes & Import", type="primary", use_container_width=True)
@@ -4109,9 +4164,27 @@ def render_data_trust_center():
             else:
                 db_note = " (database save failed — see sidebar → Database for the error)"
 
+        pg_note = ""
+        if import_to_warehouse and _pg_engine_for_save is not None:
+            pg_result = pg_load_and_import(raw_df, filename, _pg_engine_for_save)
+            if pg_result["success"]:
+                pg_note = f" and imported {pg_result['rows_imported']:,} row(s) into the PostgreSQL sales warehouse"
+                if pg_result["validation"]["warnings"]:
+                    st.warning(
+                        "PostgreSQL warehouse import warning(s): " +
+                        "; ".join(pg_result["validation"]["warnings"])
+                    )
+            elif pg_result["validation"]["blocking"]:
+                pg_note = (
+                    " (PostgreSQL warehouse import skipped: " +
+                    "; ".join(pg_result["validation"]["errors"]) + ")"
+                )
+            else:
+                pg_note = f" (PostgreSQL warehouse import failed: {pg_result['error']})"
+
         st.session_state["_show_trust_center"] = False
         st.session_state["_staged_raw_df"]     = None
-        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS{db_note}.")
+        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS{db_note}{pg_note}.")
         st.rerun()
 
     if cancel_clicked:
@@ -4738,6 +4811,83 @@ with st.sidebar:
                             st.rerun()
             if st.session_state.get("_db_last_error"):
                 st.caption(f"⚠️ Last DB error: {st.session_state['_db_last_error']}")
+
+    # ── PostgreSQL Sales Warehouse (additive, separate from the dataset-blob
+    # feature above). Populated by the "Data Import & Trust Center" import
+    # flow when the person opts in to also writing into novams_sales.
+    # Loading FROM the warehouse maps its normalized columns back onto the
+    # dashboard's existing schema via _warehouse_df_to_dashboard_schema(),
+    # so every downstream calculation/chart/filter works completely
+    # unchanged — nothing downstream needs to know the data came from SQL
+    # instead of a CSV upload. ─────────────────────────────────────────────
+    with st.expander("🐘 PostgreSQL Sales Warehouse"):
+        if not _POSTGRES_WAREHOUSE_AVAILABLE:
+            st.caption(
+                "Not available — the `database/` and `services/` packages weren't found "
+                "alongside this app. This is a separate, optional feature from the "
+                "dataset-save option above."
+            )
+        else:
+            _pg_engine = pg_connection.get_engine()
+            if _pg_engine is None:
+                st.caption(
+                    "Not configured. Set `DATABASE_URL` as an environment variable "
+                    "(local) or in Streamlit Secrets (deployed) to enable a queryable "
+                    "SQL sales warehouse — e.g.:\n\n"
+                    "`postgresql+psycopg://USER:PASS@HOST:5432/DBNAME`"
+                )
+            else:
+                _pg_health = pg_connection.check_health(_pg_engine)
+                if not _pg_health["ok"]:
+                    st.markdown(
+                        f'<span style="font-size:10px;font-weight:700;color:var(--nova-red)">● Connection failed</span>',
+                        unsafe_allow_html=True,
+                    )
+                    st.caption(_pg_health["message"])
+                else:
+                    st.markdown(
+                        '<span style="font-size:10px;font-weight:700;color:var(--nova-green)">● Connected</span>',
+                        unsafe_allow_html=True,
+                    )
+                    try:
+                        pg_queries.create_tables(_pg_engine)
+                        _pg_sources = pg_queries.list_source_files(_pg_engine)
+                        _pg_total = pg_queries.count_records(_pg_engine)
+                    except Exception as e:
+                        _pg_sources, _pg_total = pd.DataFrame(), 0
+                        st.caption(f"⚠️ Query failed: {e}")
+
+                    if _pg_total == 0:
+                        st.caption(
+                            "No data imported yet. Use the Data Import & Trust Center "
+                            "above (upload a file) and check \"Also import into "
+                            "PostgreSQL sales warehouse\" during import."
+                        )
+                    else:
+                        st.caption(f"{_pg_total:,} row(s) across {len(_pg_sources)} import(s).")
+                        for _, _src_row in _pg_sources.iterrows():
+                            st.markdown(
+                                f"<div style='font-size:11px;font-weight:600;color:#F1F5F9;margin-top:6px'>{_src_row['source_file']}</div>"
+                                f"<div style='font-size:10px;color:#6B7688'>{int(_src_row['rows']):,} rows · "
+                                f"imported {pd.to_datetime(_src_row['imported_at']).strftime('%b %d, %H:%M')}</div>",
+                                unsafe_allow_html=True,
+                            )
+                            wc1, wc2 = st.columns(2)
+                            with wc1:
+                                if st.button("Load", key=f"pg_load_{_src_row['source_file']}", use_container_width=True):
+                                    _wh_df = pg_queries.read_filtered(_pg_engine, source_file=_src_row["source_file"])
+                                    _mapped = _warehouse_df_to_dashboard_schema(_wh_df)
+                                    st.session_state["_active_df_raw"] = clean(_mapped)
+                                    st.session_state["_active_dataset_meta"] = dict(
+                                        name=_src_row["source_file"], source="PostgreSQL Sales Warehouse",
+                                        rows=int(_src_row["rows"]), trust_score=None, status="Loaded from SQL",
+                                    )
+                                    record_dataset_version(f"Loaded from PostgreSQL: {_src_row['source_file']}", int(_src_row["rows"]))
+                                    st.rerun()
+                            with wc2:
+                                if st.button("Delete", key=f"pg_del_{_src_row['source_file']}", use_container_width=True):
+                                    pg_queries.delete_by_source_file(_pg_engine, _src_row["source_file"])
+                                    st.rerun()
 
     st.markdown("---")
 
