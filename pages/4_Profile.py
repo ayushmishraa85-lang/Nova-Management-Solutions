@@ -16,8 +16,9 @@ from auth import (
     require_auth,
     log_activity,
 )
-from auth.database import get_db_connection
+from auth.database import get_engine
 from auth.hashing import hash_password, verify_password as verify_pwd
+from sqlalchemy import text
 
 # Page configuration
 st.set_page_config(
@@ -35,31 +36,26 @@ require_auth("the profile page")
 
 def update_user_profile(user_id: int, name: str = None, password: str = None) -> bool:
     """Update user profile in database"""
+    engine = get_engine()
+    if engine is None:
+        st.error("Database not configured.")
+        return False
+
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        if name:
-            cursor.execute("""
-                UPDATE users
-                SET name = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s;
-            """, (name, user_id))
-        
-        if password:
-            password_hash = hash_password(password)
-            cursor.execute("""
-                UPDATE users
-                SET password_hash = %s, updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s;
-            """, (password_hash, user_id))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
+        with engine.begin() as conn:
+            if name:
+                conn.execute(
+                    text("UPDATE users SET name = :name, updated_at = CURRENT_TIMESTAMP WHERE id = :user_id;"),
+                    dict(name=name, user_id=user_id),
+                )
+            if password:
+                password_hash = hash_password(password)
+                conn.execute(
+                    text("UPDATE users SET password_hash = :password_hash, updated_at = CURRENT_TIMESTAMP WHERE id = :user_id;"),
+                    dict(password_hash=password_hash, user_id=user_id),
+                )
         return True
-    
+
     except Exception as e:
         st.error(f"Error updating profile: {e}")
         return False
