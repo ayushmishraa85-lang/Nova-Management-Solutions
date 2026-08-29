@@ -1234,6 +1234,7 @@ def suggest_column_mapping(raw_columns: list[str]) -> dict:
     return suggestions
 
 
+@st.cache_data
 def dataset_compatibility_report(raw_df: pd.DataFrame, colmap: dict) -> dict:
     """
     Check whether raw_df (optionally with `colmap` renames applied on paper)
@@ -1254,6 +1255,7 @@ def dataset_compatibility_report(raw_df: pd.DataFrame, colmap: dict) -> dict:
     )
 
 
+@st.cache_data
 def compute_data_quality_findings(raw_df: pd.DataFrame) -> dict:
     """Inspect raw_df (pre-clean) and report concrete, evidence-backed issues."""
     findings = dict(
@@ -1296,6 +1298,7 @@ def compute_data_quality_findings(raw_df: pd.DataFrame) -> dict:
     return findings
 
 
+@st.cache_data
 def compute_trust_score(raw_df: pd.DataFrame, findings: dict, compat: dict) -> dict:
     """
     Blend completeness / validity / consistency / uniqueness into one 0-100
@@ -1529,6 +1532,7 @@ def delete_dataset_from_db(conn, dataset_id: int) -> bool:
 # ── CALCULATION FUNCTIONS  (pure — no Streamlit calls)
 # ══════════════════════════════════════════════════════════════════════════════════
 
+@st.cache_data
 def compute_kpis(df: pd.DataFrame) -> dict:
     total_rev    = df["Total Revenue"].sum()
     total_profit = df["Profit"].sum()
@@ -1546,6 +1550,7 @@ def compute_kpis(df: pd.DataFrame) -> dict:
     )
 
 
+@st.cache_data
 def compute_influencer_stats(df: pd.DataFrame) -> dict:
     has_inf = "Influencer Active" in df.columns
     if not has_inf:
@@ -1568,6 +1573,7 @@ def compute_influencer_stats(df: pd.DataFrame) -> dict:
     )
 
 
+@st.cache_data
 def compute_statistics(df: pd.DataFrame) -> dict:
     rev_arr  = df["Total Revenue"].values
     z_scores = np.abs(stats.zscore(rev_arr))
@@ -1586,6 +1592,7 @@ def compute_statistics(df: pd.DataFrame) -> dict:
     )
 
 
+@st.cache_data
 def compute_forecast(df: pd.DataFrame) -> dict | None:
     prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values().values
     n = len(prod_rev)
@@ -1611,6 +1618,7 @@ def compute_forecast(df: pd.DataFrame) -> dict | None:
     )
 
 
+@st.cache_data
 def compute_delivery_stats(n_samples: int) -> dict:
     np.random.seed(42)
     p = DELIVERY_PARAMS
@@ -1633,6 +1641,7 @@ def compute_delivery_stats(n_samples: int) -> dict:
     )
 
 
+@st.cache_data
 def compute_unit_economics(avg_rev: float) -> dict:
     e = UNIT_ECON
     costs = {k: avg_rev * v for k, v in e.items()}
@@ -1641,6 +1650,7 @@ def compute_unit_economics(avg_rev: float) -> dict:
     return dict(avg_rev=avg_rev, net_profit=net, cm_pct=cm, **costs)
 
 
+@st.cache_data
 def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     np.random.seed(123)
     prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
@@ -1665,6 +1675,7 @@ def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data
 def compute_wow_metrics(kpis: dict, factor: float = 0.88) -> dict:
     prev = dict(
         total_rev=kpis["total_rev"] * factor,
@@ -1677,6 +1688,7 @@ def compute_wow_metrics(kpis: dict, factor: float = 0.88) -> dict:
     return dict(current=kpis, previous=prev, badges=badges)
 
 
+@st.cache_data
 def compute_order_defects(total_orders: int) -> dict:
     expired       = int(total_orders * 0.018)
     missing       = int(total_orders * 0.024)
@@ -1693,6 +1705,7 @@ def compute_order_defects(total_orders: int) -> dict:
     )
 
 
+@st.cache_data
 def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     cat_rev  = kpis["cat_rev"]
     city_rev = kpis["city_rev"]
@@ -1730,6 +1743,7 @@ def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     ]
 
 
+@st.cache_data
 def compute_executive_summary(df: pd.DataFrame, kpis: dict) -> str:
     """
     One compact, auto-generated paragraph for the top of the Executive
@@ -1756,6 +1770,7 @@ def compute_executive_summary(df: pd.DataFrame, kpis: dict) -> str:
     )
 
 
+@st.cache_data
 def detect_top_anomaly(df: pd.DataFrame, z_threshold: float = 3.0) -> dict | None:
     """
     Lightweight anomaly flag for the Executive Overview: the single most
