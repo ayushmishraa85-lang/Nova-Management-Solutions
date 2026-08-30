@@ -1141,6 +1141,19 @@ def load_user_file(uploaded_file) -> pd.DataFrame:
     return clean(raw_df)
 
 
+# ── PERF FIX 3 ───────────────────────────────────────────────────────────────
+# Previously, sorted(df_raw["City"].unique()) / Category / Product Name were
+# recomputed from scratch on EVERY script rerun (every widget click anywhere
+# in the app — not just filter changes). Caching this on df_raw's content
+# means it's only recomputed when the dataset itself actually changes.
+@st.cache_data(max_entries=5, ttl=1800)
+def _get_filter_options(df_raw: pd.DataFrame):
+    cities     = ["All"] + sorted(df_raw["City"].unique())
+    categories = ["All"] + sorted(df_raw["Category"].unique())
+    products   = ["All"] + sorted(df_raw["Product Name"].unique())
+    return cities, categories, products
+
+
 def _warehouse_df_to_dashboard_schema(df: pd.DataFrame) -> pd.DataFrame:
     """
     Maps the PostgreSQL sales-warehouse's normalized column names (city,
@@ -1532,7 +1545,7 @@ def delete_dataset_from_db(conn, dataset_id: int) -> bool:
 # ── CALCULATION FUNCTIONS  (pure — no Streamlit calls)
 # ══════════════════════════════════════════════════════════════════════════════════
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4: bound memory across filter combos
 def compute_kpis(df: pd.DataFrame) -> dict:
     total_rev    = df["Total Revenue"].sum()
     total_profit = df["Profit"].sum()
@@ -1550,7 +1563,7 @@ def compute_kpis(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4
 def compute_influencer_stats(df: pd.DataFrame) -> dict:
     has_inf = "Influencer Active" in df.columns
     if not has_inf:
@@ -1573,7 +1586,7 @@ def compute_influencer_stats(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4
 def compute_statistics(df: pd.DataFrame) -> dict:
     rev_arr  = df["Total Revenue"].values
     z_scores = np.abs(stats.zscore(rev_arr))
@@ -1592,7 +1605,7 @@ def compute_statistics(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4
 def compute_forecast(df: pd.DataFrame) -> dict | None:
     prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values().values
     n = len(prod_rev)
@@ -1650,7 +1663,7 @@ def compute_unit_economics(avg_rev: float) -> dict:
     return dict(avg_rev=avg_rev, net_profit=net, cm_pct=cm, **costs)
 
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4
 def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     np.random.seed(123)
     prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
@@ -1705,7 +1718,7 @@ def compute_order_defects(total_orders: int) -> dict:
     )
 
 
-@st.cache_data
+@st.cache_data(max_entries=20, ttl=1800)  # PERF FIX 4
 def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     cat_rev  = kpis["cat_rev"]
     city_rev = kpis["city_rev"]
@@ -3329,6 +3342,9 @@ def _build_llm_system_prompt(df: pd.DataFrame, kpis: dict) -> str:
 """
 
 
+_MAX_LLM_HISTORY_TURNS = 8  # PERF FIX 1: see note below
+
+
 def _sanitise_messages(messages: list[dict]) -> list[dict]:
     clean = [
         m for m in messages
@@ -3345,6 +3361,18 @@ def _sanitise_messages(messages: list[dict]) -> list[dict]:
             merged.append({"role": msg["role"], "content": msg["content"]})
     while merged and merged[0]["role"] != "user":
         merged.pop(0)
+
+    # PERF FIX 1: previously the FULL conversation (every turn ever asked)
+    # was resent to Claude on every new message — so a 30-turn chat resent
+    # ~30 turns' worth of tokens just to answer turn 31. BlinkBot's system
+    # prompt already carries the live KPI snapshot every turn, so old Q&A
+    # pairs beyond a recent window add cost/latency without adding
+    # information Claude needs. Keep only the most recent N turns, and
+    # always keep it starting on a "user" message (API requirement).
+    if len(merged) > _MAX_LLM_HISTORY_TURNS:
+        merged = merged[-_MAX_LLM_HISTORY_TURNS:]
+        while merged and merged[0]["role"] != "user":
+            merged.pop(0)
     return merged
 
 
@@ -4945,9 +4973,7 @@ with st.sidebar:
         if _pending_clear:
             st.session_state.pop(_pending_clear, None)
 
-        cities     = ["All"] + sorted(df_raw["City"].unique())
-        categories = ["All"] + sorted(df_raw["Category"].unique())
-        products   = ["All"] + sorted(df_raw["Product Name"].unique())
+        cities, categories, products = _get_filter_options(df_raw)
 
         sel_city = st.selectbox("City / Region", cities, key="filter_city")
         sel_cat  = st.selectbox("Category",      categories, key="filter_cat")
@@ -5557,12 +5583,17 @@ if st.session_state.get("_is_universal_dataset"):
 # ── FILTERS
 # ══════════════════════════════════════════════════════════════════════════════════
 
-df = df_raw.copy()
+# PERF FIX 5: only .copy() if NO filter ends up replacing df with a fresh
+# boolean-masked frame anyway — each `df[mask]` below already returns a new
+# object, so the upfront .copy() was wasted work whenever any filter is active.
+df = df_raw
 if sel_city != "All": df = df[df["City"]              == sel_city]
 if sel_cat  != "All": df = df[df["Category"]          == sel_cat]
 if sel_inf  != "All": df = df[df["Influencer Active"] == sel_inf]
 if sel_prod != "All": df = df[df["Product Name"]      == sel_prod]
 if search:            df = df[df["Product Name"].str.contains(search, case=False, na=False)]
+if df is df_raw:
+    df = df.copy()
 
 if df.empty:
     page_header("NovaMS", "Nova Management Solutions")
@@ -6686,13 +6717,34 @@ def render_ai_analyst():
             full_response      = ""
             error_occurred     = False
 
-            for chunk in _call_claude_stream(clean_messages, system_prompt, api_key):
-                full_response += chunk
-                if "⚠️" in chunk:
-                    error_occurred = True
-                stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}▊</div>', unsafe_allow_html=True)
+            # PERF FIX 2: exact-repeat question under the same filters/data
+            # (e.g. clicking the same Quick Question twice) is answered
+            # instantly from a small in-session cache instead of re-hitting
+            # the Claude API. A fresh question, or the same question after
+            # filters/data changed (kpis differ), still calls the API normally.
+            if "_bb_response_cache" not in st.session_state:
+                st.session_state._bb_response_cache = {}
+            _cache_key = (question_to_answer.strip().lower(), system_prompt)
+            _cached = st.session_state._bb_response_cache.get(_cache_key)
 
-            stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}</div>', unsafe_allow_html=True)
+            if _cached is not None:
+                full_response = _cached
+                stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}</div>', unsafe_allow_html=True)
+            else:
+                for chunk in _call_claude_stream(clean_messages, system_prompt, api_key):
+                    full_response += chunk
+                    if "⚠️" in chunk:
+                        error_occurred = True
+                    stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}▊</div>', unsafe_allow_html=True)
+
+                stream_placeholder.markdown(f'<div class="chat-message-bot">{full_response}</div>', unsafe_allow_html=True)
+
+                if not error_occurred:
+                    st.session_state._bb_response_cache[_cache_key] = full_response
+                    # keep the cache small — this is a convenience cache, not a log
+                    if len(st.session_state._bb_response_cache) > 30:
+                        oldest_key = next(iter(st.session_state._bb_response_cache))
+                        del st.session_state._bb_response_cache[oldest_key]
 
             if response_fig and not error_occurred:
                 st.plotly_chart(response_fig, use_container_width=True, key="bb_stream_chart")
