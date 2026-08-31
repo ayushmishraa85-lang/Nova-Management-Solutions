@@ -1,4 +1,4 @@
-"""
+continue"""
 NovaMS — Nova Management Solutions
 Quick-Commerce Business Intelligence Platform
 Phase 6: Modular sidebar navigation (Executive Overview, Sales, Delivery,
@@ -92,22 +92,6 @@ try:
 except ImportError as e:
     render_reports_page = None
     _REPORTS_UI_AVAILABLE = False
-
-# PostgreSQL sales-warehouse layer (additive — separate from the existing
-# st.connection("postgresql")-backed dataset-blob save/load feature further
-# below, which is untouched). Soft-imports the same way every other
-# optional package above does, so the app runs identically with or without
-# these files/dependencies present.
-try:
-    from database import connection as pg_connection
-    from database import queries as pg_queries
-    from services.data_loader import load_and_import as pg_load_and_import
-    _POSTGRES_WAREHOUSE_AVAILABLE = True
-except ImportError:
-    pg_connection = None
-    pg_queries = None
-    pg_load_and_import = None
-    _POSTGRES_WAREHOUSE_AVAILABLE = False
 # ══════════════════════════════════════════════════════════════════════════════════
 # ── PAGE CONFIG & STYLES
 # ══════════════════════════════════════════════════════════════════════════════════
@@ -1141,33 +1125,6 @@ def load_user_file(uploaded_file) -> pd.DataFrame:
     return clean(raw_df)
 
 
-def _warehouse_df_to_dashboard_schema(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Maps the PostgreSQL sales-warehouse's normalized column names (city,
-    category, product, selling_price, cost_price, quantity, revenue,
-    influencer_active — see database/models.py) back onto the dashboard's
-    existing expected schema (REQUIRED_COLUMNS), so data loaded from the
-    warehouse flows through the exact same clean()/KPI/chart pipeline as a
-    CSV upload — nothing downstream needs to know or care where the data
-    came from. The warehouse schema has no Discount field (it was never
-    part of the requested SQL schema), so Discount is set to 0 for this
-    source rather than fabricated — an honest reflection that this data
-    source doesn't carry that field, not an invented value.
-    """
-    out = pd.DataFrame()
-    out["Product Name"] = df.get("product")
-    out["Category"] = df.get("category")
-    out["City"] = df.get("city")
-    out["Original Price"] = df.get("cost_price")
-    out["Current Price"] = df.get("selling_price")
-    out["Discount"] = 0
-    out["Orders"] = df.get("quantity")
-    out["Total Revenue"] = df.get("revenue")
-    if "influencer_active" in df.columns:
-        out["Influencer Active"] = df["influencer_active"].map({True: "Yes", False: "No"}).fillna("No")
-    return out
-
-
 def data_quality_report(df: pd.DataFrame) -> dict:
     """Compute data-trust indicators shown on the Data Explorer page."""
     missing_by_col = df.isna().sum()
@@ -1234,7 +1191,6 @@ def suggest_column_mapping(raw_columns: list[str]) -> dict:
     return suggestions
 
 
-@st.cache_data
 def dataset_compatibility_report(raw_df: pd.DataFrame, colmap: dict) -> dict:
     """
     Check whether raw_df (optionally with `colmap` renames applied on paper)
@@ -1255,7 +1211,6 @@ def dataset_compatibility_report(raw_df: pd.DataFrame, colmap: dict) -> dict:
     )
 
 
-@st.cache_data
 def compute_data_quality_findings(raw_df: pd.DataFrame) -> dict:
     """Inspect raw_df (pre-clean) and report concrete, evidence-backed issues."""
     findings = dict(
@@ -1298,7 +1253,6 @@ def compute_data_quality_findings(raw_df: pd.DataFrame) -> dict:
     return findings
 
 
-@st.cache_data
 def compute_trust_score(raw_df: pd.DataFrame, findings: dict, compat: dict) -> dict:
     """
     Blend completeness / validity / consistency / uniqueness into one 0-100
@@ -1532,24 +1486,6 @@ def delete_dataset_from_db(conn, dataset_id: int) -> bool:
 # ── CALCULATION FUNCTIONS  (pure — no Streamlit calls)
 # ══════════════════════════════════════════════════════════════════════════════════
 
-@st.cache_data(show_spinner=False)
-def _filter_dropdown_options(df_raw: pd.DataFrame) -> tuple[list, list, list]:
-    """
-    Unique dropdown values for the City/Category/Product sidebar filters.
-    Cached on the RAW (unfiltered) dataset, which only changes when a new
-    file is loaded — not when a filter is changed. Streamlit reruns this
-    whole script on every widget interaction, so without this cache the
-    three unique()+sorted() scans over the full dataset were repeated on
-    every single filter click/keystroke, even though the answer never
-    changes until a new dataset is loaded.
-    """
-    cities     = ["All"] + sorted(df_raw["City"].unique())
-    categories = ["All"] + sorted(df_raw["Category"].unique())
-    products   = ["All"] + sorted(df_raw["Product Name"].unique())
-    return cities, categories, products
-
-
-@st.cache_data
 def compute_kpis(df: pd.DataFrame) -> dict:
     total_rev    = df["Total Revenue"].sum()
     total_profit = df["Profit"].sum()
@@ -1567,7 +1503,6 @@ def compute_kpis(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
 def compute_influencer_stats(df: pd.DataFrame) -> dict:
     has_inf = "Influencer Active" in df.columns
     if not has_inf:
@@ -1590,7 +1525,6 @@ def compute_influencer_stats(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
 def compute_statistics(df: pd.DataFrame) -> dict:
     rev_arr  = df["Total Revenue"].values
     z_scores = np.abs(stats.zscore(rev_arr))
@@ -1609,7 +1543,6 @@ def compute_statistics(df: pd.DataFrame) -> dict:
     )
 
 
-@st.cache_data
 def compute_forecast(df: pd.DataFrame) -> dict | None:
     prod_rev = df.groupby("Product Name")["Total Revenue"].sum().sort_values().values
     n = len(prod_rev)
@@ -1635,7 +1568,6 @@ def compute_forecast(df: pd.DataFrame) -> dict | None:
     )
 
 
-@st.cache_data
 def compute_delivery_stats(n_samples: int) -> dict:
     np.random.seed(42)
     p = DELIVERY_PARAMS
@@ -1658,7 +1590,6 @@ def compute_delivery_stats(n_samples: int) -> dict:
     )
 
 
-@st.cache_data
 def compute_unit_economics(avg_rev: float) -> dict:
     e = UNIT_ECON
     costs = {k: avg_rev * v for k, v in e.items()}
@@ -1667,7 +1598,6 @@ def compute_unit_economics(avg_rev: float) -> dict:
     return dict(avg_rev=avg_rev, net_profit=net, cm_pct=cm, **costs)
 
 
-@st.cache_data
 def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     np.random.seed(123)
     prod_velocity = df.groupby("Product Name")["Orders"].sum().sort_values(ascending=False)
@@ -1692,7 +1622,6 @@ def compute_inventory(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-@st.cache_data
 def compute_wow_metrics(kpis: dict, factor: float = 0.88) -> dict:
     prev = dict(
         total_rev=kpis["total_rev"] * factor,
@@ -1705,7 +1634,6 @@ def compute_wow_metrics(kpis: dict, factor: float = 0.88) -> dict:
     return dict(current=kpis, previous=prev, badges=badges)
 
 
-@st.cache_data
 def compute_order_defects(total_orders: int) -> dict:
     expired       = int(total_orders * 0.018)
     missing       = int(total_orders * 0.024)
@@ -1722,7 +1650,6 @@ def compute_order_defects(total_orders: int) -> dict:
     )
 
 
-@st.cache_data
 def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     cat_rev  = kpis["cat_rev"]
     city_rev = kpis["city_rev"]
@@ -1760,7 +1687,6 @@ def compute_ai_insights(df: pd.DataFrame, kpis: dict, inf: dict) -> list[tuple]:
     ]
 
 
-@st.cache_data
 def compute_executive_summary(df: pd.DataFrame, kpis: dict) -> str:
     """
     One compact, auto-generated paragraph for the top of the Executive
@@ -1787,7 +1713,6 @@ def compute_executive_summary(df: pd.DataFrame, kpis: dict) -> str:
     )
 
 
-@st.cache_data
 def detect_top_anomaly(df: pd.DataFrame, z_threshold: float = 3.0) -> dict | None:
     """
     Lightweight anomaly flag for the Executive Overview: the single most
@@ -4113,18 +4038,6 @@ def render_data_trust_center():
     else:
         st.caption("💡 Connect a PostgreSQL database (see sidebar → Database) to save imports permanently.")
 
-    _pg_engine_for_save = pg_connection.get_engine() if _POSTGRES_WAREHOUSE_AVAILABLE else None
-    import_to_warehouse = False
-    if _pg_engine_for_save is not None:
-        import_to_warehouse = st.checkbox(
-            "🐘 Also import into PostgreSQL sales warehouse (SQL-queryable)",
-            value=False, key="import_to_pg_warehouse_checkbox",
-            help="Writes into a normalized `novams_sales` table you can query directly with SQL — "
-                 "a separate, additional destination from the dataset-save option above.",
-        )
-    elif _POSTGRES_WAREHOUSE_AVAILABLE:
-        st.caption("💡 Set `DATABASE_URL` (see sidebar → PostgreSQL Sales Warehouse) to also import into a SQL-queryable table.")
-
     b1, b2, b3 = st.columns(3)
     with b1:
         apply_clicked = st.button("Apply Recommended Fixes & Import", type="primary", use_container_width=True)
@@ -4196,27 +4109,9 @@ def render_data_trust_center():
             else:
                 db_note = " (database save failed — see sidebar → Database for the error)"
 
-        pg_note = ""
-        if import_to_warehouse and _pg_engine_for_save is not None:
-            pg_result = pg_load_and_import(raw_df, filename, _pg_engine_for_save)
-            if pg_result["success"]:
-                pg_note = f" and imported {pg_result['rows_imported']:,} row(s) into the PostgreSQL sales warehouse"
-                if pg_result["validation"]["warnings"]:
-                    st.warning(
-                        "PostgreSQL warehouse import warning(s): " +
-                        "; ".join(pg_result["validation"]["warnings"])
-                    )
-            elif pg_result["validation"]["blocking"]:
-                pg_note = (
-                    " (PostgreSQL warehouse import skipped: " +
-                    "; ".join(pg_result["validation"]["errors"]) + ")"
-                )
-            else:
-                pg_note = f" (PostgreSQL warehouse import failed: {pg_result['error']})"
-
         st.session_state["_show_trust_center"] = False
         st.session_state["_staged_raw_df"]     = None
-        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS{db_note}{pg_note}.")
+        st.success(f"✅ Imported {len(cleaned):,} rows into NovaMS{db_note}.")
         st.rerun()
 
     if cancel_clicked:
@@ -4844,83 +4739,6 @@ with st.sidebar:
             if st.session_state.get("_db_last_error"):
                 st.caption(f"⚠️ Last DB error: {st.session_state['_db_last_error']}")
 
-    # ── PostgreSQL Sales Warehouse (additive, separate from the dataset-blob
-    # feature above). Populated by the "Data Import & Trust Center" import
-    # flow when the person opts in to also writing into novams_sales.
-    # Loading FROM the warehouse maps its normalized columns back onto the
-    # dashboard's existing schema via _warehouse_df_to_dashboard_schema(),
-    # so every downstream calculation/chart/filter works completely
-    # unchanged — nothing downstream needs to know the data came from SQL
-    # instead of a CSV upload. ─────────────────────────────────────────────
-    with st.expander("🐘 PostgreSQL Sales Warehouse"):
-        if not _POSTGRES_WAREHOUSE_AVAILABLE:
-            st.caption(
-                "Not available — the `database/` and `services/` packages weren't found "
-                "alongside this app. This is a separate, optional feature from the "
-                "dataset-save option above."
-            )
-        else:
-            _pg_engine = pg_connection.get_engine()
-            if _pg_engine is None:
-                st.caption(
-                    "Not configured. Set `DATABASE_URL` as an environment variable "
-                    "(local) or in Streamlit Secrets (deployed) to enable a queryable "
-                    "SQL sales warehouse — e.g.:\n\n"
-                    "`postgresql+psycopg://USER:PASS@HOST:5432/DBNAME`"
-                )
-            else:
-                _pg_health = pg_connection.check_health(_pg_engine)
-                if not _pg_health["ok"]:
-                    st.markdown(
-                        f'<span style="font-size:10px;font-weight:700;color:var(--nova-red)">● Connection failed</span>',
-                        unsafe_allow_html=True,
-                    )
-                    st.caption(_pg_health["message"])
-                else:
-                    st.markdown(
-                        '<span style="font-size:10px;font-weight:700;color:var(--nova-green)">● Connected</span>',
-                        unsafe_allow_html=True,
-                    )
-                    try:
-                        pg_queries.create_tables(_pg_engine)
-                        _pg_sources = pg_queries.list_source_files(_pg_engine)
-                        _pg_total = pg_queries.count_records(_pg_engine)
-                    except Exception as e:
-                        _pg_sources, _pg_total = pd.DataFrame(), 0
-                        st.caption(f"⚠️ Query failed: {e}")
-
-                    if _pg_total == 0:
-                        st.caption(
-                            "No data imported yet. Use the Data Import & Trust Center "
-                            "above (upload a file) and check \"Also import into "
-                            "PostgreSQL sales warehouse\" during import."
-                        )
-                    else:
-                        st.caption(f"{_pg_total:,} row(s) across {len(_pg_sources)} import(s).")
-                        for _, _src_row in _pg_sources.iterrows():
-                            st.markdown(
-                                f"<div style='font-size:11px;font-weight:600;color:#F1F5F9;margin-top:6px'>{_src_row['source_file']}</div>"
-                                f"<div style='font-size:10px;color:#6B7688'>{int(_src_row['rows']):,} rows · "
-                                f"imported {pd.to_datetime(_src_row['imported_at']).strftime('%b %d, %H:%M')}</div>",
-                                unsafe_allow_html=True,
-                            )
-                            wc1, wc2 = st.columns(2)
-                            with wc1:
-                                if st.button("Load", key=f"pg_load_{_src_row['source_file']}", use_container_width=True):
-                                    _wh_df = pg_queries.read_filtered(_pg_engine, source_file=_src_row["source_file"])
-                                    _mapped = _warehouse_df_to_dashboard_schema(_wh_df)
-                                    st.session_state["_active_df_raw"] = clean(_mapped)
-                                    st.session_state["_active_dataset_meta"] = dict(
-                                        name=_src_row["source_file"], source="PostgreSQL Sales Warehouse",
-                                        rows=int(_src_row["rows"]), trust_score=None, status="Loaded from SQL",
-                                    )
-                                    record_dataset_version(f"Loaded from PostgreSQL: {_src_row['source_file']}", int(_src_row["rows"]))
-                                    st.rerun()
-                            with wc2:
-                                if st.button("Delete", key=f"pg_del_{_src_row['source_file']}", use_container_width=True):
-                                    pg_queries.delete_by_source_file(_pg_engine, _src_row["source_file"])
-                                    st.rerun()
-
     st.markdown("---")
 
     df_raw = st.session_state.get("_active_df_raw")
@@ -4962,7 +4780,9 @@ with st.sidebar:
         if _pending_clear:
             st.session_state.pop(_pending_clear, None)
 
-        cities, categories, products = _filter_dropdown_options(df_raw)
+        cities     = ["All"] + sorted(df_raw["City"].unique())
+        categories = ["All"] + sorted(df_raw["Category"].unique())
+        products   = ["All"] + sorted(df_raw["Product Name"].unique())
 
         sel_city = st.selectbox("City / Region", cities, key="filter_city")
         sel_cat  = st.selectbox("Category",      categories, key="filter_cat")
@@ -5572,23 +5392,12 @@ if st.session_state.get("_is_universal_dataset"):
 # ── FILTERS
 # ══════════════════════════════════════════════════════════════════════════════════
 
-# Build one combined boolean mask against df_raw and apply it in a single
-# indexing pass, instead of the previous unconditional `df_raw.copy()`
-# followed by sequential re-filtering. Streamlit reruns this whole script
-# on every widget interaction (page switch, other sidebar controls, etc.),
-# so the old unconditional full-dataframe copy happened on EVERY rerun —
-# including ones where no filter was even touched. Boolean-mask indexing
-# already returns an independent DataFrame, so no separate .copy() is
-# needed, and when no filter is active we reuse df_raw directly with zero
-# copying at all.
-_mask = pd.Series(True, index=df_raw.index)
-if sel_city != "All": _mask &= df_raw["City"]              == sel_city
-if sel_cat  != "All": _mask &= df_raw["Category"]          == sel_cat
-if sel_inf  != "All": _mask &= df_raw["Influencer Active"] == sel_inf
-if sel_prod != "All": _mask &= df_raw["Product Name"]      == sel_prod
-if search:            _mask &= df_raw["Product Name"].str.contains(search, case=False, na=False)
-
-df = df_raw if _mask.all() else df_raw[_mask]
+df = df_raw.copy()
+if sel_city != "All": df = df[df["City"]              == sel_city]
+if sel_cat  != "All": df = df[df["Category"]          == sel_cat]
+if sel_inf  != "All": df = df[df["Influencer Active"] == sel_inf]
+if sel_prod != "All": df = df[df["Product Name"]      == sel_prod]
+if search:            df = df[df["Product Name"].str.contains(search, case=False, na=False)]
 
 if df.empty:
     page_header("NovaMS", "Nova Management Solutions")
@@ -5599,44 +5408,16 @@ if df.empty:
 # ── PRE-COMPUTE EVERYTHING ONCE  (shared across every page)
 # ══════════════════════════════════════════════════════════════════════════════════
 
-# LAZY LOADING: only compute what the CURRENTLY ACTIVE page actually needs.
-# Every function below is also @st.cache_data'd, so this isn't just about
-# skipping work on this run — it means a page that's never opened for the
-# current filter/dataset combination never triggers its (potentially
-# expensive) calculation at all, and every already-visited page still
-# renders instantly from cache. Mapping verified against every render_*
-# page function's actual body (not just the word appearing in a caption):
-#   kpis       -> Executive Overview, Sales Analytics, Finance, AI Analyst (cheap; always computed)
-#   inf_stats  -> feeds AI Insights on Executive Overview only
-#   stats_data -> Sales Analytics only
-#   forecast   -> Sales Analytics only
-#   delivery   -> Executive Overview, Delivery Analytics
-#   unit_econ  -> Finance only
-#   inventory  -> Inventory Intelligence only
-#   defects    -> Delivery Analytics only
-#   wow        -> Executive Overview only
-#   insights   -> Executive Overview only
-_needs_stats     = active_page == "Sales Analytics"
-_needs_forecast  = active_page == "Sales Analytics"
-_needs_delivery  = active_page in ("Executive Overview", "Delivery Analytics")
-_needs_unit_econ = active_page == "Finance"
-_needs_inventory = active_page == "Inventory Intelligence"
-_needs_defects   = active_page == "Delivery Analytics"
-_needs_wow       = active_page == "Executive Overview"
-_needs_insights  = active_page == "Executive Overview"
-
-kpis       = compute_kpis(df)  # cheap (two groupbys) and needed by 4 pages — always computed
-inf_stats  = compute_influencer_stats(df) if _needs_insights else {"available": False}
-stats_data = compute_statistics(df) if (_needs_stats and show_stats and len(df) >= 5) else None
-forecast   = compute_forecast(df) if _needs_forecast else None
-delivery   = compute_delivery_stats(len(df)) if _needs_delivery else None
-unit_econ  = (compute_unit_economics(float(df["Total Revenue"].mean()) if len(df) > 0 else 500)
-              if _needs_unit_econ else None)
-inventory  = compute_inventory(df) if _needs_inventory else None
-defects    = compute_order_defects(int(kpis["total_orders"])) if _needs_defects else None
-wow        = compute_wow_metrics(kpis) if _needs_wow else None
-insights   = (compute_ai_insights(df, kpis, inf_stats if inf_stats["available"] else {"rev_lift":0,"p_value":1,"significant":False})
-              if _needs_insights else None)
+kpis       = compute_kpis(df)
+inf_stats  = compute_influencer_stats(df)
+stats_data = compute_statistics(df) if show_stats and len(df) >= 5 else None
+forecast   = compute_forecast(df)
+delivery   = compute_delivery_stats(len(df))
+unit_econ  = compute_unit_economics(float(df["Total Revenue"].mean()) if len(df) > 0 else 500)
+inventory  = compute_inventory(df)
+defects    = compute_order_defects(int(kpis["total_orders"]))
+wow        = compute_wow_metrics(kpis)
+insights   = compute_ai_insights(df, kpis, inf_stats if inf_stats["available"] else {"rev_lift":0,"p_value":1,"significant":False})
 
 _present_delivery_cols   = [c for c in OPTIONAL_DELIVERY_COLS if c in df.columns]
 _missing_delivery_cols   = [c for c in OPTIONAL_DELIVERY_COLS if c not in df.columns]
@@ -5856,149 +5637,6 @@ def render_executive_overview():
 # ── PAGE 2 — SALES ANALYTICS
 # ══════════════════════════════════════════════════════════════════════════════════
 
-# ── Cached chart builders for Sales Analytics — pure functions of (df, params),
-# so navigating away and back (or re-rendering on an unrelated widget touch)
-# reuses the built figure instead of reconstructing it from scratch. Each
-# builder does exactly what the old inline code did — nothing about the
-# chart's data, styling, or behavior changed, only where the code lives.
-
-@st.cache_data
-def _sa_category_perf_fig(df: pd.DataFrame, metric: str):
-    agg = df.groupby("Category").agg(
-        Revenue=("Total Revenue", "sum"), Profit=("Profit", "sum"), Orders=("Orders", "sum"),
-    )
-    agg["Margin"] = np.where(agg["Revenue"] > 0, agg["Profit"] / agg["Revenue"] * 100, 0)
-    sorted_agg = agg.sort_values(metric, ascending=False)
-    is_pct = metric == "Margin"
-    text = [f"{v:.1f}%" for v in sorted_agg[metric]] if is_pct else [fmt(v) for v in sorted_agg[metric]]
-    fig = go.Figure(go.Bar(
-        x=sorted_agg.index.tolist(), y=sorted_agg[metric],
-        marker_color=[CAT_CLR.get(c, "#6366f1") for c in sorted_agg.index],
-        marker_line_width=0, opacity=0.85, text=text, textposition="outside",
-        textfont=dict(color="#F1F5F9", size=10),
-    ))
-    fig.update_layout(**PLOTLY_BASE,
-        title=dict(text=f"Category {metric}", font=dict(color="#F1F5F9", size=13)),
-        height=280, showlegend=False,
-        yaxis=dict(ticksuffix="%" if is_pct else "", tickprefix="" if is_pct else "₹", **_AXIS_DEFAULTS))
-    return fig, sorted_agg.index[0], sorted_agg.index[-1]
-
-
-@st.cache_data
-def _sa_top_products_fig(df: pd.DataFrame):
-    top_prod = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False).head(10).reset_index()
-    fig = px.bar(top_prod, x="Total Revenue", y="Product Name", orientation="h",
-                 title="Top 10 Products by Revenue", color="Total Revenue",
-                 color_continuous_scale=["#6366f1","#06b6d4","#10b981"])
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", coloraxis_showscale=False)
-    fig.update_yaxes(autorange="reversed", gridcolor="rgba(255,255,255,.05)")
-    fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
-    return fig
-
-
-@st.cache_data
-def _sa_orders_revenue_scatter_fig(df: pd.DataFrame):
-    fig = px.scatter(df, x="Orders", y="Total Revenue", color="Category",
-                     color_discrete_map=CAT_CLR, hover_name="Product Name",
-                     hover_data={"City":True,"Discount":True},
-                     title="Orders vs Revenue (Scatter)", labels={"Total Revenue":"Revenue (₹)"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
-    fig.update_traces(marker=dict(size=7, opacity=0.7))
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    return fig
-
-
-@st.cache_data
-def _sa_influencer_impact_fig(df: pd.DataFrame):
-    if "Influencer Active" not in df.columns:
-        return None
-    inf_data = df.groupby(["Category","Influencer Active"])["Total Revenue"].mean().reset_index()
-    inf_data.columns = ["Category","Influencer","Avg Revenue"]
-    fig = px.bar(inf_data, x="Category", y="Avg Revenue", color="Influencer",
-                 barmode="group", title="Influencer Impact by Category",
-                 color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    return fig
-
-
-@st.cache_data
-def _sa_discount_revenue_orders_fig(df: pd.DataFrame):
-    disc_data = df.groupby("Discount").agg(
-        Avg_Revenue=("Total Revenue","mean"), Avg_Orders=("Orders","mean"), Count=("Orders","count")
-    ).reset_index()
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Revenue"],
-                         name="Avg Revenue", marker_color="#6366f1", opacity=0.85), secondary_y=False)
-    fig.add_trace(go.Scatter(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Orders"],
-                             name="Avg Orders", mode="lines+markers",
-                             line=dict(color="#06b6d4", width=2)), secondary_y=True)
-    fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#F1F5F9")
-    fig.update_yaxes(tickprefix="₹", secondary_y=False)
-    return fig
-
-
-@st.cache_data
-def _sa_price_tier_fig(df: pd.DataFrame):
-    price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
-    price_data["Price Tier"] = price_data["Price Tier"].astype(str)
-    fig = px.bar(price_data, x="Price Tier", y="Total Revenue", color="Price Tier",
-                 color_discrete_sequence=PAL, title="Revenue by Price Tier", labels={"Total Revenue":"Revenue (₹)"})
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    fig.update_traces(marker_line_width=0, opacity=0.85)
-    return fig
-
-
-@st.cache_data
-def _sa_corr_matrix_fig(corr_matrix: pd.DataFrame):
-    fig = px.imshow(corr_matrix, text_auto=True,
-                    color_continuous_scale=[_THEME_DANGER_HEX,"#1A1E24",_THEME_PRIMARY_HEX],
-                    zmin=-1, zmax=1, title="Full Correlation Matrix")
-    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=350)
-    return fig
-
-
-@st.cache_data
-def _sa_forecast_fig(fc: dict):
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=fc["xs"], y=fc["upper"], fill=None, mode="lines", line=dict(width=0), showlegend=False))
-    fig.add_trace(go.Scatter(x=fc["xs"], y=fc["lower"], fill="tonexty", mode="lines", line=dict(width=0), fillcolor="rgba(99,102,241,.08)", name="95% CI"))
-    fig.add_trace(go.Scatter(x=fc["xs"], y=fc["actual_vals"], mode="lines+markers", name="Actual", line=dict(color="#6366f1", width=2), marker=dict(size=4)))
-    fig.add_trace(go.Scatter(x=fc["xs"], y=fc["trend_vals"], mode="lines", name="Trend", line=dict(color="#06b6d4", width=2, dash="dash")))
-    fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
-    fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#F1F5F9", height=280)
-    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
-    return fig
-
-
-@st.cache_data
-def _sa_pareto_fig(df: pd.DataFrame):
-    prod_rev_sorted = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
-    cumulative_pct  = (prod_rev_sorted.cumsum() / prod_rev_sorted.sum() * 100).values
-    pareto_x        = list(range(1, len(prod_rev_sorted) + 1))
-    cutoff_idx      = next((i for i, v in enumerate(cumulative_pct) if v >= 80), len(pareto_x)-1)
-    cutoff_products = cutoff_idx + 1
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(x=prod_rev_sorted.index.tolist(), y=prod_rev_sorted.values,
-        name="Revenue", marker_color="#6366f1", marker_line_width=0, opacity=0.75, yaxis="y"))
-    fig.add_trace(go.Scatter(x=prod_rev_sorted.index.tolist(), y=cumulative_pct,
-        name="Cumulative %", mode="lines+markers", line=dict(color="#06b6d4", width=2), marker=dict(size=5), yaxis="y2"))
-    fig.add_hline(y=80, line_dash="dash", line_color="#f59e0b",
-                  annotation_text="80% Revenue Threshold", annotation_font_color="#f59e0b", annotation_position="top right")
-    fig.add_vrect(x0=-0.5, x1=cutoff_idx + 0.5, fillcolor="rgba(99,102,241,.06)", line_width=0,
-        annotation_text=f"Top {cutoff_products} products", annotation_position="top left", annotation_font_color=_THEME_PRIMARY_HEX)
-    fig.update_layout(**PLOTLY_BASE,
-        title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue", font=dict(color="#F1F5F9", size=12)),
-        height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(255,255,255,.05)"),
-        yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0,105], ticksuffix="%", showgrid=False),
-        legend=dict(orientation="h", y=1.1))
-    pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
-    rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
-    return fig, cutoff_products, pareto_pct, rev_80, len(prod_rev_sorted)
-
-
 def render_sales_analytics():
     page_header("Sales Analytics", "Revenue Trends · Product & City Performance · Statistical Analysis")
 
@@ -6016,8 +5654,25 @@ def render_sales_analytics():
         "Performance Metric", ["Revenue", "Profit", "Orders", "Margin"],
         horizontal=True, key="cat_perf_metric", label_visibility="collapsed",
     )
-    fig, _cat_best, _cat_worst = _sa_category_perf_fig(df, _cat_metric)
+    _cat_agg = df.groupby("Category").agg(
+        Revenue=("Total Revenue", "sum"), Profit=("Profit", "sum"), Orders=("Orders", "sum"),
+    )
+    _cat_agg["Margin"] = np.where(_cat_agg["Revenue"] > 0, _cat_agg["Profit"] / _cat_agg["Revenue"] * 100, 0)
+    _cat_sorted = _cat_agg.sort_values(_cat_metric, ascending=False)
+    _cat_is_pct = _cat_metric == "Margin"
+    _cat_text = [f"{v:.1f}%" for v in _cat_sorted[_cat_metric]] if _cat_is_pct else [fmt(v) for v in _cat_sorted[_cat_metric]]
+    fig = go.Figure(go.Bar(
+        x=_cat_sorted.index.tolist(), y=_cat_sorted[_cat_metric],
+        marker_color=[CAT_CLR.get(c, "#6366f1") for c in _cat_sorted.index],
+        marker_line_width=0, opacity=0.85, text=_cat_text, textposition="outside",
+        textfont=dict(color="#F1F5F9", size=10),
+    ))
+    fig.update_layout(**PLOTLY_BASE,
+        title=dict(text=f"Category {_cat_metric}", font=dict(color="#F1F5F9", size=13)),
+        height=280, showlegend=False,
+        yaxis=dict(ticksuffix="%" if _cat_is_pct else "", tickprefix="" if _cat_is_pct else "₹", **_AXIS_DEFAULTS))
     st.plotly_chart(fig, use_container_width=True)
+    _cat_best, _cat_worst = _cat_sorted.index[0], _cat_sorted.index[-1]
     st.caption(
         f"**{_cat_best}** leads on {_cat_metric.lower()}; **{_cat_worst}** is weakest on this measure — "
         f"{'raise pricing or trim discounting there' if _cat_metric == 'Margin' else 'review pricing or promotion mix for it'}."
@@ -6025,19 +5680,50 @@ def render_sales_analytics():
 
     col1, col2 = st.columns(2)
     with col1:
-        st.plotly_chart(_sa_top_products_fig(df), use_container_width=True)
+        top_prod = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False).head(10).reset_index()
+        fig = px.bar(top_prod, x="Total Revenue", y="Product Name", orientation="h",
+                     title="Top 10 Products by Revenue", color="Total Revenue",
+                     color_continuous_scale=["#6366f1","#06b6d4","#10b981"])
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", coloraxis_showscale=False)
+        fig.update_yaxes(autorange="reversed", gridcolor="rgba(255,255,255,.05)")
+        fig.update_xaxes(tickformat=",.0f", tickprefix="₹")
+        st.plotly_chart(fig, use_container_width=True)
     with col2:
-        st.plotly_chart(_sa_orders_revenue_scatter_fig(df), use_container_width=True)
+        fig = px.scatter(df, x="Orders", y="Total Revenue", color="Category",
+                         color_discrete_map=CAT_CLR, hover_name="Product Name",
+                         hover_data={"City":True,"Discount":True},
+                         title="Orders vs Revenue (Scatter)", labels={"Total Revenue":"Revenue (₹)"})
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
+        fig.update_traces(marker=dict(size=7, opacity=0.7))
+        fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+        st.plotly_chart(fig, use_container_width=True)
 
     col1, col2 = st.columns(2)
     with col1:
-        inf_fig = _sa_influencer_impact_fig(df)
-        if inf_fig is not None:
-            st.plotly_chart(inf_fig, use_container_width=True)
+        inf_data = df.groupby(["Category","Influencer Active"])["Total Revenue"].mean().reset_index() if "Influencer Active" in df.columns else None
+        if inf_data is not None:
+            inf_data.columns = ["Category","Influencer","Avg Revenue"]
+            fig = px.bar(inf_data, x="Category", y="Avg Revenue", color="Influencer",
+                         barmode="group", title="Influencer Impact by Category",
+                         color_discrete_map={"Yes":"#6366f1","No":"#64748B"})
+            fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9")
+            fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+            st.plotly_chart(fig, use_container_width=True)
         else:
             missing_data_notice(["Influencer Active"], "Influencer Impact")
     with col2:
-        st.plotly_chart(_sa_discount_revenue_orders_fig(df), use_container_width=True)
+        disc_data = df.groupby("Discount").agg(
+            Avg_Revenue=("Total Revenue","mean"), Avg_Orders=("Orders","mean"), Count=("Orders","count")
+        ).reset_index()
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        fig.add_trace(go.Bar(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Revenue"],
+                             name="Avg Revenue", marker_color="#6366f1", opacity=0.85), secondary_y=False)
+        fig.add_trace(go.Scatter(x=disc_data["Discount"].astype(str)+"%", y=disc_data["Avg_Orders"],
+                                 name="Avg Orders", mode="lines+markers",
+                                 line=dict(color="#06b6d4", width=2)), secondary_y=True)
+        fig.update_layout(**PLOTLY_LAYOUT, title="Discount vs Revenue & Orders", title_font_color="#F1F5F9")
+        fig.update_yaxes(tickprefix="₹", secondary_y=False)
+        st.plotly_chart(fig, use_container_width=True)
 
     if "Influencer Active" in df.columns:
         st.markdown('<div class="section-head">Marketing / Influencer Performance Ranking</div>', unsafe_allow_html=True)
@@ -6057,7 +5743,14 @@ def render_sales_analytics():
             "column, so a true return-on-spend figure can't be calculated reliably from what's available."
         )
 
-    st.plotly_chart(_sa_price_tier_fig(df), use_container_width=True)
+    price_data = df.groupby("Price Tier", observed=True)["Total Revenue"].sum().reset_index()
+    price_data["Price Tier"] = price_data["Price Tier"].astype(str)
+    fig = px.bar(price_data, x="Price Tier", y="Total Revenue", color="Price Tier",
+                 color_discrete_sequence=PAL, title="Revenue by Price Tier", labels={"Total Revenue":"Revenue (₹)"})
+    fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", showlegend=False)
+    fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+    fig.update_traces(marker_line_width=0, opacity=0.85)
+    st.plotly_chart(fig, use_container_width=True)
 
     if stats_data:
         sd = stats_data
@@ -6099,7 +5792,11 @@ def render_sales_analytics():
                 st.markdown(f'<div style="background:rgba(99,102,241,.07);border-radius:6px;padding:7px 10px;margin-top:6px"><div style="font-size:10px;font-weight:600;color:var(--nova-blue)">{pair}</div><div style="font-size:10px;color:{clr};margin-top:2px">{txt}</div></div>', unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.plotly_chart(_sa_corr_matrix_fig(sd["corr_matrix"]), use_container_width=True)
+        fig = px.imshow(sd["corr_matrix"], text_auto=True,
+                        color_continuous_scale=[_THEME_DANGER_HEX,"#1A1E24",_THEME_PRIMARY_HEX],
+                        zmin=-1, zmax=1, title="Full Correlation Matrix")
+        fig.update_layout(**PLOTLY_LAYOUT, title_font_color="#F1F5F9", height=350)
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("Enable 'Show Statistical Analysis' in the sidebar (needs ≥5 rows in the current filter).")
 
@@ -6108,7 +5805,15 @@ def render_sales_analytics():
         fc = forecast
         col1, col2 = st.columns([2, 1])
         with col1:
-            st.plotly_chart(_sa_forecast_fig(fc), use_container_width=True)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["upper"], fill=None, mode="lines", line=dict(width=0), showlegend=False))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["lower"], fill="tonexty", mode="lines", line=dict(width=0), fillcolor="rgba(99,102,241,.08)", name="95% CI"))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["actual_vals"], mode="lines+markers", name="Actual", line=dict(color="#6366f1", width=2), marker=dict(size=4)))
+            fig.add_trace(go.Scatter(x=fc["xs"], y=fc["trend_vals"], mode="lines", name="Trend", line=dict(color="#06b6d4", width=2, dash="dash")))
+            fig.add_trace(go.Scatter(x=[fc["n"]+1], y=[fc["next_val"]], mode="markers", name="Forecast", marker=dict(color="#10b981", size=12, symbol="star")))
+            fig.update_layout(**PLOTLY_LAYOUT, title="Revenue Forecast with Confidence Interval", title_font_color="#F1F5F9", height=280)
+            fig.update_yaxes(tickformat=",.0f", tickprefix="₹")
+            st.plotly_chart(fig, use_container_width=True)
         with col2:
             growth_clr = _THEME_SUCCESS_HEX if fc["growth_pct"] >= 0 else _THEME_DANGER_HEX
             st.markdown(f"""
@@ -6128,11 +5833,32 @@ def render_sales_analytics():
         st.info("Need at least 5 distinct products in the current filter to fit a forecast.")
 
     st.markdown('<div class="section-head">PARETO ANALYSIS — 80/20 REVENUE RULE</div>', unsafe_allow_html=True)
-    pareto_fig, cutoff_products, pareto_pct, rev_80, total_skus = _sa_pareto_fig(df)
+    prod_rev_sorted = df.groupby("Product Name")["Total Revenue"].sum().sort_values(ascending=False)
+    cumulative_pct  = (prod_rev_sorted.cumsum() / prod_rev_sorted.sum() * 100).values
+    pareto_x        = list(range(1, len(prod_rev_sorted) + 1))
+    cutoff_idx      = next((i for i, v in enumerate(cumulative_pct) if v >= 80), len(pareto_x)-1)
+    cutoff_products = cutoff_idx + 1
+
     col1, col2 = st.columns([3, 1])
     with col1:
-        st.plotly_chart(pareto_fig, use_container_width=True)
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=prod_rev_sorted.index.tolist(), y=prod_rev_sorted.values,
+            name="Revenue", marker_color="#6366f1", marker_line_width=0, opacity=0.75, yaxis="y"))
+        fig.add_trace(go.Scatter(x=prod_rev_sorted.index.tolist(), y=cumulative_pct,
+            name="Cumulative %", mode="lines+markers", line=dict(color="#06b6d4", width=2), marker=dict(size=5), yaxis="y2"))
+        fig.add_hline(y=80, line_dash="dash", line_color="#f59e0b",
+                      annotation_text="80% Revenue Threshold", annotation_font_color="#f59e0b", annotation_position="top right")
+        fig.add_vrect(x0=-0.5, x1=cutoff_idx + 0.5, fillcolor="rgba(99,102,241,.06)", line_width=0,
+            annotation_text=f"Top {cutoff_products} products", annotation_position="top left", annotation_font_color=_THEME_PRIMARY_HEX)
+        fig.update_layout(**PLOTLY_BASE,
+            title=dict(text=f"Pareto Chart — Top {cutoff_products} of {len(prod_rev_sorted)} products drive 80% of revenue", font=dict(color="#F1F5F9", size=12)),
+            height=300, yaxis=dict(title="Revenue (₹)", tickprefix="₹", gridcolor="rgba(255,255,255,.05)"),
+            yaxis2=dict(title="Cumulative %", overlaying="y", side="right", range=[0,105], ticksuffix="%", showgrid=False),
+            legend=dict(orientation="h", y=1.1))
+        st.plotly_chart(fig, use_container_width=True)
     with col2:
+        pareto_pct = cutoff_products / len(prod_rev_sorted) * 100
+        rev_80     = prod_rev_sorted.iloc[:cutoff_products].sum()
         st.markdown(f"""
         <div style="background:#14171C;border:1px solid #262B33;box-shadow:0 1px 2px rgba(0,0,0,.35);border-radius:12px;padding:18px;text-align:center">
           <div style="font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">80/20 Rule</div>
@@ -6143,7 +5869,7 @@ def render_sales_analytics():
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09)">
             <div class="stat-row"><span class="stat-label">Key SKUs</span><span class="stat-value">{cutoff_products}</span></div>
             <div class="stat-row"><span class="stat-label">Their revenue</span><span class="stat-value">{fmt(rev_80)}</span></div>
-            <div class="stat-row"><span class="stat-label">Total SKUs</span><span class="stat-value">{total_skus}</span></div>
+            <div class="stat-row"><span class="stat-label">Total SKUs</span><span class="stat-value">{len(prod_rev_sorted)}</span></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
