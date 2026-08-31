@@ -1,4 +1,4 @@
-continue"""
+"""
 NovaMS — Nova Management Solutions
 Quick-Commerce Business Intelligence Platform
 Phase 6: Modular sidebar navigation (Executive Overview, Sales, Delivery,
